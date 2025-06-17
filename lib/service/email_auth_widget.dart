@@ -1,4 +1,6 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:project/widgets/language_dialog.dart';
 import 'database_service.dart';
 
 class EmailAuthWidget extends StatefulWidget {
@@ -171,12 +173,28 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
     }
   }
 
+  void _showLanguageDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => const LanguageDialog(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    AppBar(
-
-    ),
     return Scaffold(
+      backgroundColor: Colors.indigo.shade50,
+      appBar: AppBar(
+        elevation: 0,
+        centerTitle: false,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.language),
+            onPressed: _showLanguageDialog,
+            tooltip: 'language_selection'.tr(),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(

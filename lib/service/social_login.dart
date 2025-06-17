@@ -1,16 +1,17 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 //소셜 로그인 관련 패키지
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_naver_login/flutter_naver_login.dart';
 import 'package:flutter_naver_login/interface/types/naver_login_status.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
-import 'package:flutter_naver_login/flutter_naver_login.dart';
-import 'package:project/hospital/hospital_main.dart';
-import 'package:project/service/auth_service.dart';
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
 import 'package:project/widgets/language_dialog.dart';
 import 'package:project/widgets/nav_main_page.dart';
 import 'database_service.dart';   //DB 연동을 위한 사용자 정의 클래스
 import 'email_auth_widget.dart';
+
 
 //로그인 플랫폼 구분용 enum
 enum LoginPlatform {google, kakao, naver, local,}
@@ -24,25 +25,42 @@ class LoginWidget extends StatefulWidget{
 
 class _LoginWidgetState extends State<LoginWidget> {
   bool isLoggedIn = false; //현재 로그인 여부
-  bool _isLoading = false;
   bool _showLocalLogin = false;
   String? nickname; //로그인한 사용자의 닉네임 (카카오, 네이버용)
   String? email; //로그인한 사용자의 이메일 (구글용)
   String? loginPlatform; //현재 로그인된 플랫폼
   String? profileImage; //프로필 이미지 URL (카카오 전용)
-  GoogleSignInAccount? _user; //로그인된 구글 사용자 정보
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email', 'profile', 'openid'],
-  );
+  User? _user; // Firebase User 객체
 
   //DB 저장을 위한 서비스 인스턴스
   final DatabaseService _db = DatabaseService();
 
-  //초기 실핼 시 DB 연결
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email']);
+
+  //초기 실행 시 DB 연결
   @override
   void initState() {
     super.initState();
-    _db.connect();
+    _initializeServices();
+  }
+
+  Future<void> _initializeServices() async {
+    try {
+      await _db.connect();
+      await _initializeFirebase();
+    } catch (e) {
+      print('서비스 초기화 실패: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('서비스 초기화에 실패했습니다: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _initializeFirebase() async {
+    await Firebase.initializeApp();
   }
 
   //위젯 종료 시 DB 연결 해제
@@ -86,67 +104,84 @@ class _LoginWidgetState extends State<LoginWidget> {
         nick: nickname,
         mail: email,
         image: null);
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => HospitalMainPage(nickname: this.nickname),
-      ),
-    );
   }
 
   //Google 로그인 함수
   Future<void> loginWithGoogle() async {
     try {
-      final account = await _googleSignIn.signIn();
-      if (account == null) return; //로그인 취소 시 종료
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return; // 로그인 취소
 
-      await _updateLoginState(
-        loggedIn: true,
-        platform: 'google',
-        nick: account.displayName,
-        mail: account.email,
-        image: '',
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
       );
 
-      print('Google 계정 로그인 성공');
-      print('Google 계정 사용자 정보');
-      print('이름 : $nickname');
-      print('이메일 : $email');
+      // Firebase에 로그인
+      UserCredential userCredential = await _auth.signInWithCredential(credential);
+      User? user = userCredential.user;
 
-      //DB에 사용자 정보 저장
-      await _db.saveUserInfo(
-        nickname: account.displayName ?? '익명',
-        email: account.email,
-        loginPlatform: 'google',
-        profileImage: profileImage ?? '', //Google 로그인의 경우 빈 문자열 전달
-      );
+      if (user != null) {
+        try {
+          // DB에 사용자 정보 저장
+          await _db.saveUserInfo(
+            nickname: user.displayName ?? '익명',
+            email: user.email ?? '',
+            loginPlatform: 'google',
+            profileImage: user.photoURL ?? '',
+            firebaseUid: user.uid,
+          );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => nav_MainPage(),
-        ),
-      );
+          await _updateLoginState(
+            loggedIn: true,
+            platform: 'google',
+            nick: user.displayName,
+            mail: user.email,
+            image: user.photoURL,
+          );
+
+          print('Google 계정 로그인 성공 (Firebase)');
+          print('이름 : ${user.displayName}');
+          print('이메일 : ${user.email}');
+        } catch (dbError) {
+          print('DB 저장 실패: $dbError');
+          // DB 저장 실패해도 로그인은 유지
+          await _updateLoginState(
+            loggedIn: true,
+            platform: 'google',
+            nick: user.displayName,
+            mail: user.email,
+            image: user.photoURL,
+          );
+        }
+      }
     } catch (e) {
-      print('Google sign-in error : $e');
+      print('Google 로그인 실패: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Google 로그인에 실패했습니다: $e')),
+        );
+      }
     }
   }
+
 
   //카카오 로그인 함수
   Future<void> loginWithKakao() async {
     try {
       //카카오톡 설치 여부에 따라 로그인 방식 선택
-      bool installed = await isKakaoTalkInstalled();
-      OAuthToken token = installed
-          ? await UserApi.instance.loginWithKakaoTalk()
-          : await UserApi.instance.loginWithKakaoAccount();
+      bool installed = await kakao.isKakaoTalkInstalled();
+      kakao.OAuthToken token = installed
+          ? await kakao.UserApi.instance.loginWithKakaoTalk()
+          : await kakao.UserApi.instance.loginWithKakaoAccount();
 
       //사용자 정보 가져오기
-      final user = await UserApi.instance.me();
-      String? kakaoEmail = user.kakaoAccount?.email;
-      String? kakaoNickname = user.kakaoAccount?.profile?.nickname;
-      String? kakaoProfileImage = user.kakaoAccount?.profile?.profileImageUrl;
+      final kakaouser = await kakao.UserApi.instance.me();
+      String? kakaoEmail = kakaouser.kakaoAccount?.email;
+      String? kakaoNickname = kakaouser.kakaoAccount?.profile?.nickname;
+      String? kakaoProfileImage = kakaouser.kakaoAccount?.profile?.profileImageUrl;
 
       print('카카오 계정 로그인 성공 : ${token.accessToken}');
       print('카카오 계정 사용자 정보');
@@ -189,14 +224,13 @@ class _LoginWidgetState extends State<LoginWidget> {
           builder: (_) => nav_MainPage(),
         ),
       );
-
     } catch (e, stack) {
       print('카카오 계정 로그인 실패: $e');
       print('스택트레이스: $stack');
     }
   }
 
-  //네이버 로그인 함수
+//네이버 로그인 함수
   Future<void> loginWithNaver() async {
     try {
       final result = await FlutterNaverLogin.logIn();
@@ -229,14 +263,6 @@ class _LoginWidgetState extends State<LoginWidget> {
             nick: naverNickname,
             mail: naverEmail,
             image: '');
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => nav_MainPage(),
-          ),
-        );
-
       } else {
         print('네이버 계정 로그인 취소 또는 실패');
       }
@@ -252,7 +278,7 @@ class _LoginWidgetState extends State<LoginWidget> {
         await _googleSignIn.signOut(); //구글 로그아웃
         print('Google 계정 로그아웃 성공');
       } else if (loginPlatform == 'kakao') {
-        await UserApi.instance.logout(); //카카오 로그아웃
+        await kakao.UserApi.instance.logout(); //카카오 로그아웃
         print('카카오 계정 로그아웃 성공');
       } else if (loginPlatform == 'naver') {
         await FlutterNaverLogin.logOutAndDeleteToken(); //네이버 로그아웃
@@ -334,8 +360,8 @@ class _LoginWidgetState extends State<LoginWidget> {
   }
 
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _nickController  = TextEditingController();
-  final TextEditingController _pwController    = TextEditingController();
+  final TextEditingController _nickController = TextEditingController();
+  final TextEditingController _pwController = TextEditingController();
 
   void _showLanguageDialog() {
     showDialog(
@@ -423,14 +449,16 @@ class _LoginWidgetState extends State<LoginWidget> {
 // 로그인 버튼
               ElevatedButton(
                 onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => EmailAuthWidget(
-                              onLoginSuccess: (email, nick, pw) => loginWithLocal(email, nick, pw)
-                      ),
-                      ),
-                    );
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          EmailAuthWidget(
+                              onLoginSuccess: (email, nick, pw) =>
+                                  loginWithLocal(email, nick, pw)
+                          ),
+                    ),
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4BB8EA),
@@ -486,7 +514,8 @@ class _LoginWidgetState extends State<LoginWidget> {
                 children: [
                   _socialBtn('assets/images/kakao_login_m.png', loginWithKakao),
                   _socialBtn('assets/images/naver_login_m.png', loginWithNaver),
-                  _socialBtn('assets/images/google_login_m.png', loginWithGoogle),
+                  _socialBtn(
+                      'assets/images/google_login_m.png', loginWithGoogle),
                 ],
               ),
               SizedBox(height: 16),

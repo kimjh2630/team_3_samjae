@@ -88,7 +88,7 @@ class _SplashScreenState extends State<SplashScreen> {
       final pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.medium,
       ).timeout(
-        const Duration(seconds: 15),
+        const Duration(seconds: 10),
         onTimeout: () => throw Exception('위치 측정 타임아웃'),
       );
       context.read<AppState>().position = pos;
@@ -119,7 +119,7 @@ class _SplashScreenState extends State<SplashScreen> {
             '$apiBase/api/medical/nearby?latitude=${pos.latitude}&longitude=${pos.longitude}&radius=10000&type=hospital',
           ),
         ).timeout(
-          Duration(seconds: 15),
+          Duration(seconds: 10),
           onTimeout: () => http.Response('{"items":[],"total_count":0}', 200),
         ));
         debugPrint('병원 데이터 성공');
@@ -134,7 +134,7 @@ class _SplashScreenState extends State<SplashScreen> {
         final result = await retry(() => EmergencyService.fetchNearbyEmergency(
           latitude: pos.latitude,
           longitude: pos.longitude,
-        ).timeout(Duration(seconds: 15), onTimeout: () => <EmergencyFacility>[]));
+        ).timeout(Duration(seconds: 10), onTimeout: () => <EmergencyFacility>[]));
         emergencyFacilities = List<EmergencyFacility>.from(result);
         debugPrint('응급 데이터 성공');
       } catch (e) {
@@ -168,7 +168,7 @@ class _SplashScreenState extends State<SplashScreen> {
               '$apiBase/api/medical/search?QN=$subject&page_no=1&num_of_rows=25&latitude=${pos.latitude}&longitude=${pos.longitude}',
             ),
           ).timeout(
-            Duration(seconds: 15),
+            Duration(seconds: 10),
             onTimeout: () => http.Response('{"items":[],"total_count":0}', 200),
           ));
           debugPrint('진료과목 $subject 데이터 성공');

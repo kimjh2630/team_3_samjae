@@ -158,6 +158,7 @@ class DatabaseService {
     required String nickname,
     required String loginPlatform,
     required String profileImage,
+    String? firebaseUid,
     String? password,
   }) async {
     try {
@@ -174,6 +175,7 @@ class DatabaseService {
         nickname VARCHAR(255) NOT NULL,
         platform VARCHAR(50) NOT NULL,
         profile_image TEXT,
+        firebase_uid VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(email, platform)
         )
@@ -181,17 +183,19 @@ class DatabaseService {
 
       //사용자 정보를 삽입하거나, 이미 있으면 닉네임과 프로필 이미지만 업데이트
       await _connection.execute('''
-        INSERT INTO users (email, nickname, platform, profile_image)
-        VALUES (@email, @nickname, @platform, @profile_image)
+        INSERT INTO users (email, nickname, platform, profile_image, firebase_uid)
+        VALUES (@email, @nickname, @platform, @profile_image, @firebaseUid)
         ON CONFLICT (email, platform) 
         DO UPDATE SET 
           nickname = EXCLUDED.nickname,
-          profile_image = EXCLUDED.profile_image
+          profile_image = EXCLUDED.profile_image,
+          firebase_uid = EXCLUDED.firebase_uid
       ''', substitutionValues: {
         'email': email,
         'nickname': nickname,
         'platform': loginPlatform,
         'profile_image': profileImage,
+        'firebaseUid': firebaseUid,
       });
 
       print('사용자 정보 저장 성공');
@@ -224,6 +228,7 @@ class DatabaseService {
           'email': results[0][2],           //이메일
           'loginPlatform': results[0][3],   //로그인 플랫폼
           'profileImage': results[0][4],    //프로필 이미지 URL
+          'firebaseUid': results[0][5],
         };
       }
       //결과가 없으면 null 반환

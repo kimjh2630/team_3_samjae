@@ -5,7 +5,7 @@ import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:kakao_flutter_sdk_common/kakao_flutter_sdk_common.dart';
 import 'package:project/chat_bot/chatbot_page.dart';
 import 'package:project/emergency/emergency_map_page.dart';
-import 'package:project/hospital/hospital_search_result_page.dart' as hospital;
+import 'package:project/hospital/hospital_search_result_page.dart';
 import 'package:project/pharmacy/pharmacy_find.dart';
 import 'package:project/service/social_login.dart';      // LoginWidget 정의된 파일
 import 'package:project/chat_bot/chatbot_screen.dart';  // 다른 화면들
@@ -16,7 +16,8 @@ import 'package:project/splash/splash_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
 import 'state/app_state.dart';
-
+import 'firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
 /// 애플리케이션의 진입점
 ///
 /// 이 함수는 앱의 초기화 작업을 수행합니다:
@@ -27,6 +28,9 @@ import 'state/app_state.dart';
 void main() async {
   // Flutter 엔진 초기화
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   // 다국어 지원 초기화
   await EasyLocalization.ensureInitialized();
 
@@ -98,7 +102,7 @@ class MyApp extends StatelessWidget {
       home: SplashScreen(),
       routes: {
         '/chatbot': (context) => const ChatbotPage(),
-        '/hospital_search': (context) => const hospital.HospitalSearchResultPage(),
+        '/hospital_search': (context) => const HospitalSearchResultPage(),
         '/pharmacy_nearby': (context) => const PharmacyFindPage(),
         '/emergency_map': (context) => const EmergencyMapPage(),
         '/reservation': (context) => ReservationListPage(),
