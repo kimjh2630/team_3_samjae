@@ -13,6 +13,23 @@ class AppState extends ChangeNotifier {
   Position? currentPosition;
   List<MedicalFacility>? nearbyHospitals;
 
+  // 닉네임 글로벌 상태
+  String? _nickname;
+  String? get nickname => _nickname;
+  set nickname(String? value) {
+    _nickname = value;
+    notifyListeners();
+  }
+
+  // ── 여기에 로그인 상태 로직 추가 ──
+  bool _isLoggedIn = false;
+  bool get isLoggedIn => _isLoggedIn;
+  void setLoggedIn(bool val) {
+    _isLoggedIn = val;
+    notifyListeners();
+  }
+
+
   Position? get position => _position;
   List<MedicalFacility>? get pharmacies => _pharmacies;
   List<MedicalFacility>? get hospitals => _hospitals;

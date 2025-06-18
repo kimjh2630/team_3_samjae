@@ -1,16 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:project/profile/AppInfoPage.dart';
 import 'package:project/profile/EditProfilePage.dart';
+import 'package:project/profile/HelpPage.dart';
+import 'package:project/profile/NoticePage.dart';
 import 'package:project/profile/TermsPrivacyScreen.dart';
 import 'package:project/service/auth_service.dart';
 import 'package:project/service/social_login.dart';
 import 'package:project/widgets/language_dialog.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:project/widgets/nav_main_page.dart';
+import 'package:provider/provider.dart';
+import '../state/app_state.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({Key? key}) : super(key: key);
 
-class ProfileScreen extends StatelessWidget {
-  final String? nickname;
-  const ProfileScreen({Key? key, this.nickname}) : super(key: key);
+  final String _url = 'https://www.freeprivacypolicy.com/live/98c95c6c-778b-457c-bbf2-e77eefc8c442';
+
+  void _launchURL() async {
+    final uri = Uri.parse(_url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      // 실패 시 처리
+      throw '해당 URL을 열 수 없습니다: $_url';
+    }
+  }
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _showDeleteForm = false;
 
   void _showLanguageDialog(BuildContext context) {
     showDialog(
@@ -57,8 +80,12 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
+    final nickname = Provider.of<AppState>(context).nickname;
+    final isLoggedIn = Provider.of<AppState>(context).isLoggedIn;
+
     return Scaffold(
       backgroundColor: Colors.indigo.shade50,
       appBar: AppBar(
@@ -101,7 +128,7 @@ class ProfileScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                nickname ?? '테스트',
+                nickname ?? "nonMember".tr(),
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -112,40 +139,78 @@ class ProfileScreen extends StatelessWidget {
 
               // 개인정보 섹션
               _buildProfileSection(
-                title: '개인정보',
+                title: "personalInformation".tr(),
                 items: [
                   ProfileMenuItem(
                     icon: Icons.person_outline,
-                    title: '내 정보 수정',
-                    onTap: () {
-                      Navigator.push(
+                    title:"editProfile".tr(),
+                    onTap: () async {
+                      final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) =>   EditProfilePage()),
+                            builder: (_) =>   EditProfilePage(currentNickname: nickname)),
                       );
+                      if (result == true) {
+                        // Handle nickname update
+                      }
                     },
                   ),
                 ],
               ),
               const SizedBox(height: 24),
 
-              // 고객센터 섹션
+              // 안내 섹션
               _buildProfileSection(
-                title: '고객센터',
+                title: "guide".tr(),
                 items: [
                   ProfileMenuItem(
                     icon: Icons.notifications_none,
-                    title: '공지사항',
-                    onTap: () {},
+                    title: "announcements".tr(),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                      MaterialPageRoute(
+                        builder: (_) => const NoticePage()
+                      ),
+                      );
+                    },
                   ),
                   ProfileMenuItem(
                     icon: Icons.language,
-                    title: '약관 및 개인정보 처리 동의',
+                    title: "agreeToTermsAndPrivacy".tr(),
+                    onTap: () async {
+                      final url = Uri.parse('https://www.freeprivacypolicy.com/live/98c95c6c-778b-457c-bbf2-e77eefc8c442');
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url, mode: LaunchMode.externalApplication); // 브라우저에서 열기
+                      } else {
+                        // 오류 처리
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('링크를 열 수 없습니다.')),
+                        );
+                      }
+                    },
+                  ),
+                  ProfileMenuItem(
+                    icon: Icons.help_outline,
+                    title:  "help".tr(),
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const TermsPrivacyPage()),
+                            builder: (_) => const HelpPage()
+                        ),
+                      );
+                    },
+                  ),
+                  ProfileMenuItem(
+                    icon: Icons.info_outline,
+                    title: "appInfo".tr(),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const AppInfoPage()
+                        ),
                       );
                     },
                   ),
@@ -153,43 +218,37 @@ class ProfileScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // 기타 섹션
-              _buildProfileSection(
-                title: '기타',
-                items: [
-                  ProfileMenuItem(
-                    icon: Icons.help_outline,
-                    title: '도움말',
-                    onTap: () {},
-                  ),
-                  ProfileMenuItem(
-                    icon: Icons.info_outline,
-                    title: '앱 정보',
-                    onTap: () {},
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // 로그아웃 섹션
-              _buildProfileSection(
-                title: '로그 아웃',
-                items: [
-                  Center(
-                    child: TextButton(
-                      onPressed: () {
-                        AuthService.logout();
+              // 최하단 로그아웃 텍스트버튼
+              Center(
+                child: TextButton(
+                  onPressed: () async {
+                    if (isLoggedIn) {
+                      // 로그아웃
+                      await AuthService.logout();
+                      Provider.of<AppState>(context, listen: false).setLoggedIn(false);
+                      if (context.mounted) {
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(
-                              builder: (_) => const LoginWidget()),
+                          MaterialPageRoute(builder: (_) => const LoginWidget()),
                               (route) => false,
                         );
-                      },
-                      child: const Text('로그 아웃 하기'),
+                      }
+                    } else {
+                      // 로그인 안 된 상태 → 로그인 화면으로
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginWidget()),
+                      );
+                    }
+                  },
+                  child: Text(
+                    isLoggedIn ? "logout".tr() : "login".tr(),
+                    style: const TextStyle(
+                      color: Colors.black54,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ],
+                ),
               ),
             ],
           ),

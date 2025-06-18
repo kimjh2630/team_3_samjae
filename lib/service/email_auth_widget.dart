@@ -1,10 +1,13 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:project/widgets/language_dialog.dart';
-import 'database_service.dart';
+import 'auth_service.dart';
+import 'dart:convert';
+import 'package:provider/provider.dart';
+import '../state/app_state.dart';
 
 class EmailAuthWidget extends StatefulWidget {
-  final Function(String email, String nickname, String password) onLoginSuccess;
+  final Future<void> Function(String email, String nickname, String password) onLoginSuccess;
 
   const EmailAuthWidget({
     Key? key,
@@ -20,7 +23,6 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nicknameController = TextEditingController();
-  final DatabaseService _db = DatabaseService();
   bool _isLogin = true; // true: 로그인, false: 회원가입
   bool _isLoading = false;
 
@@ -35,10 +37,10 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
   // 이메일 유효성 검사
   String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) {
-      return '이메일을 입력해주세요';
+      return "enterEmail".tr();
     }
     if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-      return '올바른 이메일 형식이 아닙니다';
+      return "invalidEmailFormat".tr();
     }
     return null;
   }
@@ -46,10 +48,10 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
   // 비밀번호 유효성 검사
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return '비밀번호를 입력해주세요';
+      return "enterPassword".tr();
     }
     if (value.length < 6) {
-      return '비밀번호는 6자 이상이어야 합니다';
+      return "passwordTooShort".tr();
     }
     return null;
   }
@@ -57,7 +59,7 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
   // 닉네임 유효성 검사
   String? _validateNickname(String? value) {
     if (!_isLogin && (value == null || value.isEmpty)) {
-      return '닉네임을 입력해주세요';
+      return "enterNickname".tr();
     }
     return null;
   }
@@ -65,28 +67,33 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
   // 폼 제출 처리
   Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
-      print('이메일 : ${_emailController.text}');
-      print('비밀번호 : ${_passwordController.text}');
+      print('이메일 : \\${_emailController.text}');
+      print('비밀번호 : \\${_passwordController.text}');
       if (_isLogin) {
-        // 로그인 처리
-        final result = await _db.loginWithEmail(
-          email: _emailController.text,
-          password: _passwordController.text,
-        );
-
-        if (result != null) {
-          final email = result['email']?.toString() ?? 'unknown@example.com';
-          final password = result['password']?.toString() ?? '';
-          final nicknameRaw = result['nickname'];
-          final nickname = (nicknameRaw is String && nicknameRaw.trim().isNotEmpty)
-              ? nicknameRaw
-              : '익명';
-          widget.onLoginSuccess(email, nickname, password);
+        // 로그인 처리 (API 호출)
+        final response = await AuthService.login({
+          'email': _emailController.text,
+          'password': _passwordController.text,
+          'platform': 'local',
+        });
+        print('로그인 응답: \\${response.statusCode} \\${response.body}');
+        if (response.statusCode == 200) {
+          final data = jsonDecode(utf8.decode(response.bodyBytes));
+          await AuthService.saveToken(data['access_token']);
+          await AuthService.saveUserInfo(data['email'], data['platform']);
+          await AuthService.saveRefreshToken(data['refresh_token']);
+          await AuthService.saveNickname(data['nickname']);
+          Provider.of<AppState>(context, listen: false).nickname = data['nickname'];
+          await widget.onLoginSuccess(
+            data['email'],
+            data['nickname'],
+            _passwordController.text,
+          );
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('로그인에 성공했습니다.',
-                style: TextStyle(color: Colors.green),
+              SnackBar(
+                content: Text( "loginSuccess".tr(),
+                  style: TextStyle(color: Colors.green),
                 ),
                 backgroundColor: Colors.white,
                 duration: Duration(seconds: 2),
@@ -95,9 +102,10 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
           }
         } else {
           if (mounted) {
+            final msg = jsonDecode(utf8.decode(response.bodyBytes))['detail'] ?? "loginFailed".tr();
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('로그인 실패 : 이메일 또는 비밀번호가 올바르지 않습니다',
+              SnackBar(
+                content: Text('${"loginFailed".tr()} : $msg',
                   style: TextStyle(color: Colors.red),
                 ),
                 backgroundColor: Colors.white,
@@ -106,7 +114,7 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
           }
         }
       } else {
-        // 회원가입 처리
+        // 회원가입 처리 (API 호출)
         await _register();
       }
     }
@@ -118,25 +126,23 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
       setState(() {
         _isLoading = true;
       });
-
       try {
-        final success = await _db.registerWithEmail(
-          email: _emailController.text,
-          password: _passwordController.text,
-          nickname: _nicknameController.text,
-        );
-
-        if (success) {
+        final response = await AuthService.register({
+          'email': _emailController.text,
+          'password': _passwordController.text,
+          'nickname': _nicknameController.text,
+          'platform': 'local',
+        });
+        print('회원가입 응답: \\${response.statusCode} \\${response.body}');
+        if (response.statusCode == 200 || response.statusCode == 201) {
           if (mounted) {
-            // 회원가입 성공 메시지 표시
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('회원가입이 완료되었습니다.'),
+              SnackBar(
+                content: Text("signupComplete".tr()),
                 backgroundColor: Colors.green,
                 duration: Duration(seconds: 2),
               ),
             );
-            // 로그인 화면으로 전환
             setState(() {
               _isLogin = true;
               _emailController.clear();
@@ -146,9 +152,10 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
           }
         } else {
           if (mounted) {
+            final msg = jsonDecode(utf8.decode(response.bodyBytes))['detail'] ?? "signupFailed".tr();
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('회원가입에 실패했습니다. 다시 시도해주세요.'),
+              SnackBar(
+                content: Text('${"signupFailed".tr()}: $msg'),
                 backgroundColor: Colors.red,
               ),
             );
@@ -158,7 +165,7 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('오류가 발생했습니다: $e'),
+              content: Text('${"detail.error".tr()} : $e'),
               backgroundColor: Colors.red,
             ),
           );
@@ -204,9 +211,9 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 40), // 상단 여백 추가
+                  SizedBox(height: 40), // 상단 여백 추가
                   Text(
-                    _isLogin ? '로그인' : '회원가입',
+                    _isLogin ? "login".tr() : "signup".tr(),
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -215,17 +222,17 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
                   const SizedBox(height: 20),
                   TextFormField(
                     controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: '이메일',
+                    decoration: InputDecoration(
+                      labelText: "email".tr(),
                       border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return '이메일을 입력해주세요';
+                        return  "enterEmail".tr();
                       }
                       if (!value.contains('@')) {
-                        return '올바른 이메일 형식이 아닙니다';
+                        return "invalidEmailFormat".tr();
                       }
                       return null;
                     },
@@ -233,17 +240,17 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _passwordController,
-                    decoration: const InputDecoration(
-                      labelText: '비밀번호',
+                    decoration: InputDecoration(
+                      labelText: "password".tr(),
                       border: OutlineInputBorder(),
                     ),
                     obscureText: true,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return '비밀번호를 입력해주세요';
+                        return "enterPassword".tr();
                       }
                       if (value.length < 6) {
-                        return '비밀번호는 6자 이상이어야 합니다';
+                        return "passwordTooShort".tr();
                       }
                       return null;
                     },
@@ -252,13 +259,13 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _nicknameController,
-                      decoration: const InputDecoration(
-                        labelText: '닉네임',
+                      decoration: InputDecoration(
+                        labelText: "nickname".tr(),
                         border: OutlineInputBorder(),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return '닉네임을 입력해주세요';
+                          return "enterNickname".tr();
                         }
                         return null;
                       },
@@ -272,7 +279,7 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
                       onPressed: _isLoading ? null : _submitForm,
                       child: _isLoading
                           ? const CircularProgressIndicator()
-                          : Text(_isLogin ? '로그인' : '회원가입'),
+                          : Text(_isLogin ? "login".tr() : "signup".tr()),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -288,7 +295,7 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
                       });
                     },
                     child: Text(
-                      _isLogin ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인',
+                      _isLogin ? "noAccountSignup".tr() : "alreadyHaveAccount".tr(),
                     ),
                   ),
                   const SizedBox(height: 40), // 하단 여백 추가

@@ -162,7 +162,7 @@ class _EmergencyMapPageState extends State<EmergencyMapPage> {
               SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _initLocationAndFetch,
-                child: Text('다시 시도'),
+                child: Text("retry".tr()),
               ),
             ],
           ),
@@ -198,7 +198,7 @@ class _EmergencyMapPageState extends State<EmergencyMapPage> {
                 id: 'current_location',
                 position: NLatLng(_currentPosition!.latitude, _currentPosition!.longitude),
               )..setCaption(NOverlayCaption(
-                text: '현재 위치',
+                text: "currentLocation".tr(),
                 textSize: 14,
                 color: Colors.blue,
               ));

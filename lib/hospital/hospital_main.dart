@@ -10,12 +10,14 @@ import 'hospital_search_result_page.dart' as hospital;
 import 'package:easy_localization/easy_localization.dart';
 import '../emergency/emergency_box.dart';
 import '../emergency/emergency_map_page.dart';
+import 'package:project/service/auth_service.dart';
+import 'package:provider/provider.dart';
+import '../state/app_state.dart';
+import 'dart:async';
 
 
 class HospitalMainPage extends StatefulWidget {
-  final String? nickname;
-  const HospitalMainPage({Key? key, this.nickname})
-      : super(key: key);
+  const HospitalMainPage({Key? key}) : super(key: key);
 
   @override
   _HospitalMainPageState createState() => _HospitalMainPageState();
@@ -31,14 +33,44 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
     );
   }
 
+  final PageController _controller = PageController(viewportFraction: 1);
   final List<String> adImages = [
     'assets/images/ad1.png',
     'assets/images/ad2.png',
     'assets/images/ad3.png',
   ];
 
+  int _currentPage = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(Duration(seconds: 3), (Timer timer) {
+      if (_currentPage < adImages.length - 1) {
+        _currentPage++;
+      } else {
+        _currentPage = 0;
+      }
+
+      _controller.animateToPage(
+        _currentPage,
+        duration: Duration(milliseconds: 400),
+        curve: Curves.easeIn,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();  // 타이머 중지
+    _controller.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final nickname = Provider.of<AppState>(context).nickname;
     return Scaffold(
       backgroundColor: Colors.indigo.shade50,
       appBar: AppBar(
@@ -67,21 +99,22 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
               children: [
                 const SizedBox(height: 20),
                 Text(
-                  '안녕하세요, ${widget.nickname ?? '테스트'}',
-                  style: TextStyle(fontSize: 18, color: Colors.black54),
+                  "${'hello'.tr()}, ${nickname ?? '비회원'} ${"ok_".tr()}",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
                 SizedBox(height: 10),
 
                 SizedBox(
                   height: 130,  // 슬라이더 높이 조절
+                  width: double.infinity,
                   child: PageView.builder(
-                    controller: PageController(viewportFraction: 0.9),
+                    controller: _controller,
                     itemCount: adImages.length,
                     itemBuilder: (context, index) {
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8.0),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(12),
                           child: Image.asset(
                             adImages[index],
                             fit: BoxFit.cover,
@@ -142,7 +175,7 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                         },
                         child: Container(
                           width: double.infinity,
-                          height: 190,
+                          height: 200,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -165,10 +198,16 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                               Text(
                                 "hospital_search".tr(),
                                 style: TextStyle(
-                                  fontSize: 20,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.black87,
                                 ),
+                              ),
+                              SizedBox(height: 0),
+                              Text(
+                                "quickFindHospital".tr(),
+                                style: TextStyle(fontSize: 10, color: Colors.black54),
+                                textAlign: TextAlign.start,
                               ),
                             ],
                           ),
@@ -189,7 +228,7 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                         // child: PolygonOverlay(
                         child: Container(
                           width: double.infinity,
-                          height: 190,
+                          height: 200,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -212,10 +251,16 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                               Text(
                                 "pharmacy_search".tr(),
                                 style: TextStyle(
-                                  fontSize: 20,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.black87,
                                 ),
+                              ),
+                              SizedBox(height: 0),
+                              Text(
+                                "findPharmacyOnMap".tr(),
+                                style: TextStyle(fontSize: 10, color: Colors.black54),
+                                textAlign: TextAlign.start,
                               ),
                             ],
                           ),
@@ -316,13 +361,15 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                           fit: BoxFit.contain,
                         ),
                         SizedBox(width: 40),
-                        Text(
+                        Flexible(
+                          child: Text(
                           "emergency.nearby".tr(),
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: Colors.red.shade700,
                           ),
+                        ),
                         ),
                       ],
                     ),

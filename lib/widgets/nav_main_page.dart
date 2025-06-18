@@ -1,11 +1,11 @@
-
 import 'package:flutter/material.dart';
 import 'package:project/chat_bot/chatbot_screen.dart';
 import 'package:project/hospital/hospital_main.dart';
 import 'package:project/profile/profile_screen.dart';
 import 'package:project/reservation/reservation_list_page.dart';
 import '../widgets/bottom_nav_bar.dart';
-
+import 'package:provider/provider.dart';
+import '../state/app_state.dart';
 
 class nav_MainPage extends StatefulWidget {
   final int initialIndex;
@@ -21,13 +21,12 @@ class _nav_MainPageState extends State<nav_MainPage> {
   @override
   void initState(){
     super.initState();
-    _currentIndex = widget.initialIndex; // 초기값 설정
+    _currentIndex = widget.initialIndex;
   }
 
   @override
   void didUpdateWidget(covariant nav_MainPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-
     if (widget.initialIndex != oldWidget.initialIndex) {
       setState(() {
         _currentIndex = widget.initialIndex;
@@ -35,20 +34,25 @@ class _nav_MainPageState extends State<nav_MainPage> {
     }
   }
 
-  final List<Widget> _pages = [
-    HospitalMainPage(),
-    ChatbotScreen(),
-    ReservationListPage(),
-    ProfileScreen(),
-  ];
+  void _onTabChange(int index) {
+    setState(() => _currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Provider에서 닉네임을 직접 구독
+    final nickname = Provider.of<AppState>(context).nickname;
+    final List<Widget> pages = [
+      HospitalMainPage(),
+      ChatbotScreen(),
+      ReservationListPage(),
+      ProfileScreen(),
+    ];
     return Scaffold(
-      body: _pages[_currentIndex],                            // ② 인덱스에 따른 화면 전환
+      body: pages[_currentIndex],
       bottomNavigationBar: MainBottomNavBar(
-        currentIndex: _currentIndex,                          // ③ 현재 인덱스 지정
-        onTap: (index) => setState(() => _currentIndex = index), // ② 탭 누르면 setState로 인덱스 변경
+        currentIndex: _currentIndex,
+        onTap: _onTabChange,
       ),
     );
   }

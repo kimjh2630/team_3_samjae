@@ -18,6 +18,7 @@ import 'package:provider/provider.dart';
 import 'state/app_state.dart';
 import 'firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 /// 애플리케이션의 진입점
 ///
 /// 이 함수는 앱의 초기화 작업을 수행합니다:
@@ -86,8 +87,17 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  Future<void> _initNickname(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    final nickname = prefs.getString('nickname');
+    final appState = Provider.of<AppState>(context, listen: false);
+    appState.nickname = (nickname != null && nickname.isNotEmpty) ? nickname : '비회원';
+  }
+
   @override
   Widget build(BuildContext context) {
+    // 앱 시작 시 닉네임을 AppState에 초기화
+    _initNickname(context);
     return MaterialApp(
       title: '소셜 로그인 + 지도 예제',
       // 앱의 기본 테마 설정

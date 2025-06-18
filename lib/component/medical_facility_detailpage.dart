@@ -86,8 +86,8 @@ class MedicalFacilityDetailPage extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              AuthService.login(); // 임시 로그인 처리
-              Navigator.pop(context);
+              // 로그인 화면으로 이동
+              Navigator.pushReplacementNamed(context, '/login');
             },
             child: Text('login'.tr()),
           ),
@@ -97,19 +97,12 @@ class MedicalFacilityDetailPage extends StatelessWidget {
   }
 
   void _navigateToReservationPage(BuildContext context) {
-    if (!AuthService.isLoggedIn) {
-      _showLoginRequiredDialog(context);
-      return;
-    }
-
+    // 예약 버튼은 항상 노출, 실제 예약 시 로그인 체크
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => HospitalReservationPage(
-          hospitalName: facility.dutyName ?? '',
-          hospitalAddress: facility.dutyAddr ?? '',
-          openTime: facility.dutyTime1s ?? '0900',
-          closeTime: facility.dutyTime1c ?? '1800',
+          facility: facility,
         ),
       ),
     );
@@ -138,7 +131,7 @@ class MedicalFacilityDetailPage extends StatelessWidget {
       // backgroundColor: Colors.indigo.shade50,
       appBar: AppBar(
         centerTitle: true,
-        title: Text('병원 상세 정보',
+        title: Text("hospitalDetail".tr(),
         ),
         // 언어 변경 아이콘
         actions: [

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -23,7 +24,7 @@ class MedicalMapWidget extends StatelessWidget {
 
       if (lat == null || lon == null) {
         print('Invalid facility coordinates: ${facility.wgs84Lat}, ${facility.wgs84Lon}');
-        return Center(child: Text('위치 정보를 표시할 수 없습니다.'));
+        return Center(child: Text("locationNotFound".tr()));
       }
 
       return CommonNaverMap(
@@ -39,7 +40,7 @@ class MedicalMapWidget extends StatelessWidget {
 
     if (facilityLat == null || facilityLon == null) {
       print('Invalid facility coordinates: ${facility.wgs84Lat}, ${facility.wgs84Lon}');
-      return Center(child: Text('위치 정보를 표시할 수 없습니다.'));
+      return Center(child: Text("cannotDisplayLocationInformation".tr()));
     }
 
     return SizedBox(
@@ -76,7 +77,7 @@ class MedicalMapWidget extends StatelessWidget {
           );
           currentMarker.setCaption(
             NOverlayCaption(
-              text: '현재 위치',
+              text: "currentLocation".tr(),
               textSize: 14,
               color: Colors.blue,
             ),

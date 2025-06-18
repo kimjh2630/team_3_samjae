@@ -596,7 +596,7 @@ class _HospitalSearchResultPageState extends State<HospitalSearchResultPage> wit
       Position? position = appState.position;
 
       if (position == null) {
-        throw Exception('위치 정보를 찾을 수 없습니다.');
+        throw Exception("locationNotFound".tr());
       }
 
       // 이미 캐시된 병원 목록이 있는지 확인
@@ -659,7 +659,7 @@ class _HospitalSearchResultPageState extends State<HospitalSearchResultPage> wit
           appState.hospitals = hospitals;  // 캐시에 저장
         }
       } else {
-        throw Exception('서버 오류가 발생했습니다.');
+        throw Exception("serverError".tr());
       }
     } catch (e) {
       if (mounted) {

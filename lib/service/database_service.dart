@@ -238,4 +238,170 @@ class DatabaseService {
       rethrow;      //에러 상위 호출자에게 전달
     }
   }
+
+  // 이메일 변경 함수
+  Future<bool> updateEmail({
+    required String oldEmail,
+    required String newEmail,
+    required String loginPlatform,
+  }) async {
+    try {
+      if (!_isConnected) {
+        await connect();
+      }
+
+      // 새 이메일 중복 체크
+      final existingUser = await _connection.query(
+        'SELECT * FROM users WHERE email = @email AND platform = @platform',
+        substitutionValues: {'email': newEmail, 'platform': loginPlatform},
+      );
+
+      if (existingUser.isNotEmpty) {
+        print('이미 존재하는 이메일입니다.');
+        return false;
+      }
+
+      // 이메일 업데이트
+      await _connection.execute('''
+        UPDATE users 
+        SET email = @newEmail 
+        WHERE email = @oldEmail AND platform = @platform
+      ''', substitutionValues: {
+        'newEmail': newEmail,
+        'oldEmail': oldEmail,
+        'platform': loginPlatform,
+      });
+
+      // email_users 테이블도 업데이트 (로컬 계정인 경우)
+      if (loginPlatform == 'local') {
+        await _connection.execute('''
+          UPDATE email_users 
+          SET email = @newEmail 
+          WHERE email = @oldEmail
+        ''', substitutionValues: {
+          'newEmail': newEmail,
+          'oldEmail': oldEmail,
+        });
+      }
+
+      print('이메일 변경 성공');
+      return true;
+    } catch (e) {
+      print('이메일 변경 실패: $e');
+      return false;
+    }
+  }
+
+  // 비밀번호 변경 함수 (로컬 계정만)
+  Future<bool> updatePassword({
+    required String email,
+    required String newPassword,
+  }) async {
+    try {
+      if (!_isConnected) {
+        await connect();
+      }
+
+      final passwordHash = _hashPassword(newPassword);
+      
+      await _connection.execute('''
+        UPDATE email_users 
+        SET password_hash = @passwordHash 
+        WHERE email = @email
+      ''', substitutionValues: {
+        'passwordHash': passwordHash,
+        'email': email,
+      });
+
+      print('비밀번호 변경 성공');
+      return true;
+    } catch (e) {
+      print('비밀번호 변경 실패: $e');
+      return false;
+    }
+  }
+
+  // 닉네임 변경 함수
+  Future<bool> updateNickname({
+    required String email,
+    required String newNickname,
+    required String loginPlatform,
+  }) async {
+    try {
+      if (!_isConnected) {
+        await connect();
+      }
+
+      if (newNickname.trim().isEmpty) {
+        print('닉네임이 비어 있습니다.');
+        return false;
+      }
+
+      await _connection.execute('''
+        UPDATE users 
+        SET nickname = @newNickname 
+        WHERE email = @email AND platform = @platform
+      ''', substitutionValues: {
+        'newNickname': newNickname,
+        'email': email,
+        'platform': loginPlatform,
+      });
+
+      // email_users 테이블도 업데이트 (로컬 계정인 경우)
+      if (loginPlatform == 'local') {
+        await _connection.execute('''
+          UPDATE email_users 
+          SET nickname = @newNickname 
+          WHERE email = @email
+        ''', substitutionValues: {
+          'newNickname': newNickname,
+          'email': email,
+        });
+      }
+
+      print('닉네임 변경 성공');
+      return true;
+    } catch (e) {
+      print('닉네임 변경 실패: $e');
+      return false;
+    }
+  }
+
+  // 회원탈퇴 함수
+  Future<bool> deleteUser({
+    required String email,
+    required String loginPlatform,
+  }) async {
+    try {
+      if (!_isConnected) {
+        await connect();
+      }
+
+      // users 테이블에서 삭제
+      await _connection.execute('''
+        DELETE FROM users 
+        WHERE email = @email AND platform = @platform
+      ''', substitutionValues: {
+        'email': email,
+        'platform': loginPlatform,
+      });
+
+      // email_users 테이블에서도 삭제 (로컬 계정인 경우)
+      if (loginPlatform == 'local') {
+        await _connection.execute('''
+          DELETE FROM email_users 
+          WHERE email = @email
+        ''', substitutionValues: {
+          'email': email,
+        });
+      }
+
+      print('회원탈퇴 성공');
+      return true;
+    } catch (e) {
+      print('회원탈퇴 실패: $e');
+      return false;
+    }
+  }
+  
 }
