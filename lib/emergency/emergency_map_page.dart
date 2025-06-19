@@ -175,7 +175,9 @@ class _EmergencyMapPageState extends State<EmergencyMapPage> {
         title: Text('emergency.nearby'.tr()),
         backgroundColor: Colors.red,
       ),
-      body: Stack(
+      body: SafeArea(
+    bottom: true,
+    child: Stack(
         children: [
           NaverMap(
             options: NaverMapViewOptions(
@@ -238,6 +240,7 @@ class _EmergencyMapPageState extends State<EmergencyMapPage> {
           if (_facilities.isEmpty)
             Positioned(
               top: 16,
+              bottom: 0,
               left: 16,
               right: 16,
               child: Container(
@@ -459,6 +462,7 @@ class _EmergencyMapPageState extends State<EmergencyMapPage> {
               ),
             ),
         ],
+      ),
       ),
     );
   }

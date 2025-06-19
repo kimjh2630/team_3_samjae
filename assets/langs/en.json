@@ -171,7 +171,7 @@
   "home.title": "main screen",
   "pharmacy_search": "pharmacy search",
   "chatbot.chat": "Chat with the chatbot",
-  "chatbot.subchat": "Try chatting with the chatbot.\nFrom finding directions to hospitals, all in one!",
+  "chatbot.subchat": "Chat & Find Hospitals",
   "home": "Home",
   "chatbot": "Chat bot",
   "myinfo": "My Info",
@@ -216,7 +216,7 @@
   "personalInformation": "Personal Information",
   "customerService": "Customer Service",
   "announcements": "Announcements",
-  "agreeToTermsAndPrivacy": "Agree to Terms and Privacy Policy",
+  "agreeToTermsAndPrivacy": "Terms & Privacy",
   "guide": "Guide",
   "help": "Help",
   "appInfo": "App Information",
@@ -245,8 +245,8 @@
   "socialLoginSignup": "Quick Login / Signup",
   "or": "Or",
   "startAsNonMember": "Start as Non-member",
-  "quickFindHospital": "Quickly find nearby hospitals and make reservations easily!",
-  "findPharmacyOnMap": "Find pharmacies directly on the map!",
+  "quickFindHospital": "Find hospitals & book easily",
+  "findPharmacyOnMap": "Pharmacy Map",
   "ok_": "Sir/Madam",
   "notification": "notification",
   "log_in": "LOG IN",
@@ -258,5 +258,6 @@
   "change_reservation": "Change reservation",
   "cannot_load_hospital_details": "Unable to load hospital details.",
   "cancel": "Cancel",
-  "guest": "GUEST"
+  "guest": "GUEST",
+  "please_log_in": "Please log in"
 }

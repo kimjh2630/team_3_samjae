@@ -172,7 +172,7 @@
   "home_title": "메인 화면",
   "pharmacy_search": "약국 찾기",
   "chatbot.chat": "AI DOC으로 대화하기",
-  "chatbot.subchat": "챗봇으로 대화를 해보세요. 길찾기부터 병원까지 한번에!",
+  "chatbot.subchat": "챗봇으로 대화를 해보세요.",
   "home": "홈",
   "chatbot": "챗봇",
   "myinfo" : "내 정보",
@@ -259,6 +259,7 @@
   "change_reservation": "예약변경",
   "cannot_load_hospital_details": "병원 상세정보를 불러올 수 없습니다.",
   "cancel": "취소",
-  "guest": "비회원"
+  "guest": "비회원",
+  "please_log_in": "로그인을 해주세요"
 }
 

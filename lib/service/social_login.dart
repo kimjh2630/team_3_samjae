@@ -138,11 +138,11 @@ class _LoginWidgetState extends State<LoginWidget> {
         try {
           // DB에 사용자 정보 저장
           await _db.saveUserInfo(
-            nickname: user.displayName ?? '익명',
-            email: user.email ?? '',
-            loginPlatform: 'google',
-            profileImage: user.photoURL ?? '',
-            firebaseUid: user.uid,
+            email:           user.email      ?? '',
+            nickname:        user.displayName?? '익명',
+            loginPlatform:   'google',
+            firebaseUid:     user.uid,
+            profileImage: user.photoURL    ?? '',
           );
 
           await _updateLoginState(

@@ -46,14 +46,19 @@ class DatabaseService {
 
         //이메일 회원가입용 테이블 생성
         await _connection.execute('''
-          CREATE TABLE IF NOT EXISTS email_users (
-            id SERIAL PRIMARY KEY,
-            nickname VARCHAR(255) NOT NULL,
-            email VARCHAR(255) UNIQUE NOT NULL,
-            password_hash VARCHAR(255) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )
-        ''');
+  CREATE TABLE IF NOT EXISTS loginaccount (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    nickname VARCHAR(255) NOT NULL,
+    platform VARCHAR(50) NOT NULL,
+    profile_image TEXT,
+    firebase_uid VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_loginaccount_email_platform
+    ON loginaccount(email, platform);
+''');
       } catch (e) {
         print('데이터베이스 연결 실패: $e');
         rethrow;                    //에러를 상위 호출자에게 전달
@@ -159,85 +164,58 @@ class DatabaseService {
     required String loginPlatform,
     required String profileImage,
     String? firebaseUid,
-    String? password,
   }) async {
-    try {
-      if (!_isConnected) {
-        await connect();    //연결이 안 되어 있으면 연결부터 시도
-      }
+    if (!_isConnected) await connect();
 
-      //users 테이블이 없으면 생성
-      //email과 platform 조합은 유니크해야함
-      await _connection.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        email VARCHAR(255) NOT NULL,
-        nickname VARCHAR(255) NOT NULL,
-        platform VARCHAR(50) NOT NULL,
-        profile_image TEXT,
-        firebase_uid VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(email, platform)
-        )
-      ''');
+    await _connection.execute('''
+    INSERT INTO loginaccount
+      (email, nickname, platform, profile_image, firebase_uid)
+    VALUES
+      (@email, @nickname, @platform, @profileImage, @firebaseUid)
+    ON CONFLICT (email, platform)
+    DO UPDATE SET
+      nickname       = EXCLUDED.nickname,
+      profile_image  = EXCLUDED.profile_image,
+      firebase_uid   = EXCLUDED.firebase_uid,
+      updated_at     = CURRENT_TIMESTAMP;
+  ''', substitutionValues: {
+      'email': email,
+      'nickname': nickname,
+      'platform': loginPlatform,
+      'profileImage': profileImage,
+      'firebaseUid': firebaseUid ?? '',
+    });
 
-      //사용자 정보를 삽입하거나, 이미 있으면 닉네임과 프로필 이미지만 업데이트
-      await _connection.execute('''
-        INSERT INTO users (email, nickname, platform, profile_image, firebase_uid)
-        VALUES (@email, @nickname, @platform, @profile_image, @firebaseUid)
-        ON CONFLICT (email, platform) 
-        DO UPDATE SET 
-          nickname = EXCLUDED.nickname,
-          profile_image = EXCLUDED.profile_image,
-          firebase_uid = EXCLUDED.firebase_uid
-      ''', substitutionValues: {
-        'email': email,
-        'nickname': nickname,
-        'platform': loginPlatform,
-        'profile_image': profileImage,
-        'firebaseUid': firebaseUid,
-      });
-
-      print('사용자 정보 저장 성공');
-    } catch (e) {
-      print('사용자 정보 저장 실패: $e');
-      rethrow;      //에러 상위 호출자에게 전달
-    }
+    print('loginaccount 저장/업데이트 성공');
   }
 
-  //이메일과 플랫폼으로 사용자 정보를 조회하는 함수
+
+// 3) getUserInfo() → loginaccount 조회
   Future<Map<String, dynamic>?> getUserInfo({
     required String email,
     required String loginPlatform,
   }) async {
-    try {
-      if (!_isConnected) {
-        await connect();      //연결이 안 되어 있으면 연결 시도
-      }
+    if (!_isConnected) await connect();
 
-      //users 테이블에서 해당 이메일과 플랫폼에 맞는 사용자 정보 조회
-      final results = await _connection.query(
-        'SELECT * FROM users WHERE email = @email AND platform = @platform',
-        substitutionValues: {'email': email, 'platform': loginPlatform},
-      );
+    final results = await _connection.query(
+      'SELECT * FROM loginaccount WHERE email = @email AND platform = @platform',
+      substitutionValues: {
+        'email': email,
+        'platform': loginPlatform,
+      },
+    );
+    if (results.isEmpty) return null;
 
-      //결과가 있으면 Map 형태로 반환
-      if (results.isNotEmpty) {
-        return {
-          'nickname': results[0][1],        //닉네임
-          'email': results[0][2],           //이메일
-          'loginPlatform': results[0][3],   //로그인 플랫폼
-          'profileImage': results[0][4],    //프로필 이미지 URL
-          'firebaseUid': results[0][5],
-        };
-      }
-      //결과가 없으면 null 반환
-      return null;
-    } catch (e) {
-      print('사용자 정보 조회 실패: $e');
-      rethrow;      //에러 상위 호출자에게 전달
-    }
+    final row = results.first;
+    return {
+      'nickname': row[2],
+      'email': row[1],
+      'loginPlatform': row[3],
+      'profileImage': row[4],
+      'firebaseUid': row[5],
+    };
   }
+
 
   // 이메일 변경 함수
   Future<bool> updateEmail({
@@ -252,7 +230,7 @@ class DatabaseService {
 
       // 새 이메일 중복 체크
       final existingUser = await _connection.query(
-        'SELECT * FROM users WHERE email = @email AND platform = @platform',
+        'SELECT * FROM loginaccount WHERE email = @email AND platform = @platform',
         substitutionValues: {'email': newEmail, 'platform': loginPlatform},
       );
 
@@ -263,7 +241,7 @@ class DatabaseService {
 
       // 이메일 업데이트
       await _connection.execute('''
-        UPDATE users 
+        UPDATE loginaccount 
         SET email = @newEmail 
         WHERE email = @oldEmail AND platform = @platform
       ''', substitutionValues: {
@@ -275,7 +253,7 @@ class DatabaseService {
       // email_users 테이블도 업데이트 (로컬 계정인 경우)
       if (loginPlatform == 'local') {
         await _connection.execute('''
-          UPDATE email_users 
+          UPDATE loginaccount 
           SET email = @newEmail 
           WHERE email = @oldEmail
         ''', substitutionValues: {
@@ -305,7 +283,7 @@ class DatabaseService {
       final passwordHash = _hashPassword(newPassword);
       
       await _connection.execute('''
-        UPDATE email_users 
+        UPDATE loginaccount 
         SET password_hash = @passwordHash 
         WHERE email = @email
       ''', substitutionValues: {
@@ -350,7 +328,7 @@ class DatabaseService {
       // email_users 테이블도 업데이트 (로컬 계정인 경우)
       if (loginPlatform == 'local') {
         await _connection.execute('''
-          UPDATE email_users 
+          UPDATE loginaccount 
           SET nickname = @newNickname 
           WHERE email = @email
         ''', substitutionValues: {
@@ -379,7 +357,7 @@ class DatabaseService {
 
       // users 테이블에서 삭제
       await _connection.execute('''
-        DELETE FROM users 
+        DELETE FROM loginaccount 
         WHERE email = @email AND platform = @platform
       ''', substitutionValues: {
         'email': email,
@@ -389,7 +367,7 @@ class DatabaseService {
       // email_users 테이블에서도 삭제 (로컬 계정인 경우)
       if (loginPlatform == 'local') {
         await _connection.execute('''
-          DELETE FROM email_users 
+          DELETE FROM loginaccount 
           WHERE email = @email
         ''', substitutionValues: {
           'email': email,
