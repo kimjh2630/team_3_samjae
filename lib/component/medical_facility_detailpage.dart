@@ -15,7 +15,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/services.dart';
 
-
 import 'naver_directions_button.dart';
 
 class MedicalFacilityDetailPage extends StatelessWidget {
@@ -48,18 +47,23 @@ class MedicalFacilityDetailPage extends StatelessWidget {
       String formattedStart = _formatTime(startTime);
       String formattedEnd = _formatTime(endTime);
       // 24시간 운영(24:00~24:00 또는 2400~2400)인 경우
-      if ((startTime == '2400' || startTime == '24:00') && (endTime == '2400' || endTime == '24:00')) {
+      if ((startTime == '2400' || startTime == '24:00') &&
+          (endTime == '2400' || endTime == '24:00')) {
         formattedTimes[day] = '24시간 운영';
-      } else if (formattedStart == 'detail.no_info'.tr() && formattedEnd == 'detail.no_info'.tr()) {
+      } else if (formattedStart == 'detail.no_info'.tr() &&
+          formattedEnd == 'detail.no_info'.tr()) {
         formattedTimes[day] = 'detail.no_hours'.tr();
-      } else if (formattedStart != 'detail.no_info'.tr() && formattedEnd == 'detail.no_info'.tr()) {
+      } else if (formattedStart != 'detail.no_info'.tr() &&
+          formattedEnd == 'detail.no_info'.tr()) {
         formattedTimes[day] = "$formattedStart ~ " + 'detail.no_info'.tr();
-      } else if (formattedStart == 'detail.no_info'.tr() && formattedEnd != 'detail.no_info'.tr()) {
+      } else if (formattedStart == 'detail.no_info'.tr() &&
+          formattedEnd != 'detail.no_info'.tr()) {
         formattedTimes[day] = 'detail.no_info'.tr() + " ~ $formattedEnd";
       } else {
         formattedTimes[day] = "$formattedStart ~ $formattedEnd";
       }
     }
+
     _addFormattedTime('월요일', facility.dutyTime1s, facility.dutyTime1c);
     _addFormattedTime('화요일', facility.dutyTime2s, facility.dutyTime2c);
     _addFormattedTime('수요일', facility.dutyTime3s, facility.dutyTime3c);
@@ -74,25 +78,26 @@ class MedicalFacilityDetailPage extends StatelessWidget {
   void _showLoginRequiredDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('login_required'.tr()),
-        content: Text('login_to_reserve'.tr()),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: Text('cancel'.tr()),
+      builder:
+          (context) => AlertDialog(
+            title: Text('login_required'.tr()),
+            content: Text('login_to_reserve'.tr()),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: Text('cancel'.tr()),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  // 로그인 화면으로 이동
+                  Navigator.pushReplacementNamed(context, '/login');
+                },
+                child: Text('login'.tr()),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              // 로그인 화면으로 이동
-              Navigator.pushReplacementNamed(context, '/login');
-            },
-            child: Text('login'.tr()),
-          ),
-        ],
-      ),
     );
   }
 
@@ -101,19 +106,14 @@ class MedicalFacilityDetailPage extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => HospitalReservationPage(
-          facility: facility,
-        ),
+        builder: (context) => HospitalReservationPage(facility: facility),
       ),
     );
   }
 
   //언어 변경 로직
   void _showLanguageDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => const LanguageDialog(),
-    );
+    showDialog(context: context, builder: (context) => const LanguageDialog());
   }
 
   @override
@@ -121,18 +121,23 @@ class MedicalFacilityDetailPage extends StatelessWidget {
     final dutyTimes = getDutyTimes();
     final String calculatedStatus = facility.calculateTodayOpenStatus();
     // 응급의료기관(24시간 운영)일 경우 무조건 운영중으로 표시
-    final bool isEmergency = (facility.dutyDiv == '응급실' || facility.dutyDivNam == '응급실');
+    final bool isEmergency =
+        (facility.dutyDiv == '응급실' || facility.dutyDivNam == '응급실');
     final bool isOperating = isEmergency || calculatedStatus.contains('운영중');
-    final String displayStatusText = isEmergency ? 'operating'.tr() : _getTranslatedStatus(calculatedStatus);
-    final Color statusColor = isOperating ? Colors.green :
-    calculatedStatus.contains('운영종료') ? Colors.red : Colors.grey;
+    final String displayStatusText =
+        isEmergency ? 'operating'.tr() : _getTranslatedStatus(calculatedStatus);
+    final Color statusColor =
+        isOperating
+            ? Colors.green
+            : calculatedStatus.contains('운영종료')
+            ? Colors.red
+            : Colors.grey;
 
     return Scaffold(
       // backgroundColor: Colors.indigo.shade50,
       appBar: AppBar(
         centerTitle: true,
-        title: Text("hospitalDetail".tr(),
-        ),
+        title: Text("hospitalDetail".tr()),
         // 언어 변경 아이콘
         actions: [
           IconButton(
@@ -143,213 +148,228 @@ class MedicalFacilityDetailPage extends StatelessWidget {
         ],
         // title: Text(facility.getCleanDutyName() ?? 'detail.no_name'.tr()),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. 최상단에 지도 배치
-            if (facility.dutyAddr != null && facility.wgs84Lat != null && facility.wgs84Lon != null)
-              FutureBuilder<Position?>(
-                future: Geolocator.getCurrentPosition(
-                  desiredAccuracy: LocationAccuracy.high,
-                ),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  }
-                  return MedicalMapWidget(
-                    facility: facility,
-                    currentPosition: snapshot.data,
-                  );
-                },
-              ),
-            SizedBox(height: 24),
-
-            // 2. 병원/약국명과 예약 버튼
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    facility.getCleanDutyName() ?? 'detail.no_name'.tr(),
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
+      body: SafeArea(
+        bottom: true,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. 최상단에 지도 배치
+              if (facility.dutyAddr != null &&
+                  facility.wgs84Lat != null &&
+                  facility.wgs84Lon != null)
+                FutureBuilder<Position?>(
+                  future: Geolocator.getCurrentPosition(
+                    desiredAccuracy: LocationAccuracy.high,
                   ),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(child: CircularProgressIndicator());
+                    }
+                    return MedicalMapWidget(
+                      facility: facility,
+                      currentPosition: snapshot.data,
+                    );
+                  },
                 ),
-                if (fromMainHospitalSearch && !isEmergency && facility.dutyDiv != '약국') // 메인 병원찾기에서만 예약 버튼 표시
-                  ElevatedButton.icon(
-                    onPressed: () => _navigateToReservationPage(context),
-                    icon: Icon(Icons.calendar_today),
-                    label: Text('reservation.make'.tr()),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF4BB8EA),
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-              ],
-            ),
-            SizedBox(height: 8),
+              SizedBox(height: 24),
 
-            // 3. 주소
-            Row(
-              children: [
-                Icon(Icons.location_on, color: Colors.grey[600], size: 20),
-                SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    facility.dutyAddr ?? 'detail.no_address'.tr(),
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-
-            // 4. 운영 상태와 전화번호를 카드로 표시
-            Card(
-              elevation: 2,
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 운영 상태
-                    Row(
-                      children: [
-                        Icon(
-                          isOperating ? Icons.check_circle : Icons.cancel,
-                          color: statusColor,
-                          size: 20,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          displayStatusText,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: statusColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 12),
-                    // 전화번호
-                    Row(
-                      children: [
-                        Icon(Icons.phone, color: Colors.grey[600], size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          facility.dutyTel1 ?? 'detail.no_phone'.tr(),
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[800],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(height: 16),
-
-            // 5. 길찾기 버튼
-            if (facility.dutyAddr != null && facility.wgs84Lat != null && facility.wgs84Lon != null)
-              NaverDirectionsButton(
-                destLat: double.tryParse(facility.wgs84Lat ?? '') ?? 0.0,
-                destLon: double.tryParse(facility.wgs84Lon ?? '') ?? 0.0,
-                destName: facility.getCleanDutyName() ?? 'detail.no_name'.tr(),
-                destAddr: facility.dutyAddr,
-                height: 56,
-                buttonText: 'detail.directions'.tr(),
-              ),
-            SizedBox(height: 24),
-            // 진료과목 표시
-            if (facility.dgidIdName != null && facility.dgidIdName!.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // 2. 병원/약국명과 예약 버튼
+              Row(
                 children: [
-                  Text(
-                    'emergency.subjects'.tr(),
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Text(
+                      facility.getCleanDutyName() ?? 'detail.no_name'.tr(),
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: facility.dgidIdName!.split(',').map((subject) => Chip(
-                      label: Text(_translateSubject(subject.trim()), style: TextStyle(color: Colors.black)),
-                      backgroundColor: Colors.red[50],
-                    )).toList(),
-                  ),
-                  SizedBox(height: 24),
+                  if (fromMainHospitalSearch &&
+                      !isEmergency &&
+                      facility.dutyDiv != '약국') // 메인 병원찾기에서만 예약 버튼 표시
+                    ElevatedButton.icon(
+                      onPressed: () => _navigateToReservationPage(context),
+                      icon: Icon(Icons.calendar_today),
+                      label: Text('reservation.make'.tr()),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF4BB8EA),
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
                 ],
               ),
+              SizedBox(height: 8),
 
-            // 6. 운영시간
-            Text(
-              'detail.weekly_hours'.tr(),
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[200]!),
-              ),
-              child: Table(
-                columnWidths: const {
-                  0: FlexColumnWidth(1),
-                  1: FlexColumnWidth(2),
-                },
-                border: TableBorder(
-                  horizontalInside: BorderSide(color: Colors.grey[200]!),
-                  verticalInside: BorderSide(color: Colors.grey[200]!),
-                ),
-                children: dutyTimes.entries.map((e) {
-                  return TableRow(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
+              // 3. 주소
+              Row(
+                children: [
+                  Icon(Icons.location_on, color: Colors.grey[600], size: 20),
+                  SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      facility.dutyAddr ?? 'detail.no_address'.tr(),
+                      style: TextStyle(fontSize: 16, color: Colors.grey[800]),
                     ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 16),
+
+              // 4. 운영 상태와 전화번호를 카드로 표시
+              Card(
+                elevation: 2,
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Text(
-                          _getTranslatedDay(e.key),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[800],
+                      // 운영 상태
+                      Row(
+                        children: [
+                          Icon(
+                            isOperating ? Icons.check_circle : Icons.cancel,
+                            color: statusColor,
+                            size: 20,
                           ),
-                        ),
+                          SizedBox(width: 8),
+                          Text(
+                            displayStatusText,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: statusColor,
+                            ),
+                          ),
+                        ],
                       ),
-                      Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Text(
-                          (e.value == '24시간 운영') ? 'emergency.open_24h'.tr() : (e.value ?? 'detail.no_hours'.tr()),
-                          style: TextStyle(
-                            color: Colors.grey[800],
-                            height: 1.5,
+                      SizedBox(height: 12),
+                      // 전화번호
+                      Row(
+                        children: [
+                          Icon(Icons.phone, color: Colors.grey[600], size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            facility.dutyTel1 ?? 'detail.no_phone'.tr(),
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[800],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
-                  );
-                }).toList(),
+                  ),
+                ),
               ),
-            ),
-          ],
+              SizedBox(height: 16),
+
+              // 5. 길찾기 버튼
+              if (facility.dutyAddr != null &&
+                  facility.wgs84Lat != null &&
+                  facility.wgs84Lon != null)
+                NaverDirectionsButton(
+                  destLat: double.tryParse(facility.wgs84Lat ?? '') ?? 0.0,
+                  destLon: double.tryParse(facility.wgs84Lon ?? '') ?? 0.0,
+                  destName:
+                      facility.getCleanDutyName() ?? 'detail.no_name'.tr(),
+                  destAddr: facility.dutyAddr,
+                  height: 56,
+                  buttonText: 'detail.directions'.tr(),
+                ),
+              SizedBox(height: 24),
+              // 진료과목 표시
+              if (facility.dgidIdName != null &&
+                  facility.dgidIdName!.isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'emergency.subjects'.tr(),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children:
+                          facility.dgidIdName!
+                              .split(',')
+                              .map(
+                                (subject) => Chip(
+                                  label: Text(
+                                    _translateSubject(subject.trim()),
+                                    style: TextStyle(color: Colors.black),
+                                  ),
+                                  backgroundColor: Colors.red[50],
+                                ),
+                              )
+                              .toList(),
+                    ),
+                    SizedBox(height: 24),
+                  ],
+                ),
+
+              // 6. 운영시간
+              Text(
+                'detail.weekly_hours'.tr(),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 12),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
+                child: Table(
+                  columnWidths: const {
+                    0: FlexColumnWidth(1),
+                    1: FlexColumnWidth(2),
+                  },
+                  border: TableBorder(
+                    horizontalInside: BorderSide(color: Colors.grey[200]!),
+                    verticalInside: BorderSide(color: Colors.grey[200]!),
+                  ),
+                  children:
+                      dutyTimes.entries.map((e) {
+                        return TableRow(
+                          decoration: BoxDecoration(color: Colors.white),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Text(
+                                _getTranslatedDay(e.key),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[800],
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Text(
+                                (e.value == '24시간 운영')
+                                    ? 'emergency.open_24h'.tr()
+                                    : (e.value ?? 'detail.no_hours'.tr()),
+                                style: TextStyle(
+                                  color: Colors.grey[800],
+                                  height: 1.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -365,14 +385,17 @@ class MedicalFacilityDetailPage extends StatelessWidget {
           children: [
             Text(
               'detail.basic_info'.tr(),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 16),
-            _buildInfoRow('detail.name'.tr(), facility.getCleanDutyName() ?? 'detail.no_name'.tr()),
-            _buildInfoRow('detail.address'.tr(), facility.dutyAddr ?? 'detail.no_address'.tr()),
+            _buildInfoRow(
+              'detail.name'.tr(),
+              facility.getCleanDutyName() ?? 'detail.no_name'.tr(),
+            ),
+            _buildInfoRow(
+              'detail.address'.tr(),
+              facility.dutyAddr ?? 'detail.no_address'.tr(),
+            ),
           ],
         ),
       ),
@@ -395,9 +418,7 @@ class MedicalFacilityDetailPage extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
-            child: Text(value),
-          ),
+          Expanded(child: Text(value)),
         ],
       ),
     );
@@ -412,15 +433,24 @@ class MedicalFacilityDetailPage extends StatelessWidget {
 
   String _getTranslatedDay(String day) {
     switch (day) {
-      case '월요일': return 'detail.monday'.tr();
-      case '화요일': return 'detail.tuesday'.tr();
-      case '수요일': return 'detail.wednesday'.tr();
-      case '목요일': return 'detail.thursday'.tr();
-      case '금요일': return 'detail.friday'.tr();
-      case '토요일': return 'detail.saturday'.tr();
-      case '일요일': return 'detail.sunday'.tr();
-      case '공휴일': return 'detail.holiday'.tr();
-      default: return day;
+      case '월요일':
+        return 'detail.monday'.tr();
+      case '화요일':
+        return 'detail.tuesday'.tr();
+      case '수요일':
+        return 'detail.wednesday'.tr();
+      case '목요일':
+        return 'detail.thursday'.tr();
+      case '금요일':
+        return 'detail.friday'.tr();
+      case '토요일':
+        return 'detail.saturday'.tr();
+      case '일요일':
+        return 'detail.sunday'.tr();
+      case '공휴일':
+        return 'detail.holiday'.tr();
+      default:
+        return day;
     }
   }
 

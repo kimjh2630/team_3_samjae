@@ -119,6 +119,7 @@ class _ChatbotPageState extends State<ChatbotPage> {
         ],
       ),
       body: SafeArea(
+        bottom: true,
         child: Column(
           children: [
             Expanded(

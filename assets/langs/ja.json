@@ -255,5 +255,6 @@
   "reservation_canceled": "予約がキャンセルされました！",
   "change_reservation": "予約変更",
   "cannot_load_hospital_details": "病院の詳細情報を読み込めません。",
-  "cancel": "キャンセル"
+  "cancel": "キャンセル",
+  "guest": "ゲスト"
 }

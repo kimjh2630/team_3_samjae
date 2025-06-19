@@ -107,13 +107,13 @@ class NaverDirectionsButton extends StatelessWidget {
           print('[NaverMap] Dialog result: $result');
           if (result == true) {
             final Uri playStoreUri = Uri.parse('market://details?id=com.nhn.android.nmap');
-            final Uri webPlayStoreUri = Uri.parse('https://play.google.com/store/apps/details?id=com.nhn.android.nmap');
-            if (await canLaunchUrl(playStoreUri)) {
-              print('[NaverMap] Launch PlayStore URI: $playStoreUri');
+            try {
               await launchUrl(playStoreUri, mode: LaunchMode.externalApplication);
-            } else {
-              print('[NaverMap] Launch Web PlayStore URI: $webPlayStoreUri');
-              await launchUrl(webPlayStoreUri, mode: LaunchMode.externalApplication);
+            } catch (e) {
+              print('[NaverMap] Launch PlayStore URI failed: $e');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('플레이스토어를 실행할 수 없습니다.')),
+              );
             }
           }
         }
@@ -139,13 +139,13 @@ class NaverDirectionsButton extends StatelessWidget {
         print('[NaverMap] Dialog result: $result');
         if (result == true) {
           final Uri playStoreUri = Uri.parse('market://details?id=com.nhn.android.nmap');
-          final Uri webPlayStoreUri = Uri.parse('https://play.google.com/store/apps/details?id=com.nhn.android.nmap');
-          if (await canLaunchUrl(playStoreUri)) {
-            print('[NaverMap] Launch PlayStore URI: $playStoreUri');
+          try {
             await launchUrl(playStoreUri, mode: LaunchMode.externalApplication);
-          } else {
-            print('[NaverMap] Launch Web PlayStore URI: $webPlayStoreUri');
-            await launchUrl(webPlayStoreUri, mode: LaunchMode.externalApplication);
+          } catch (e) {
+            print('[NaverMap] Launch PlayStore URI failed: $e');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('플레이스토어를 실행할 수 없습니다.')),
+            );
           }
         }
       }

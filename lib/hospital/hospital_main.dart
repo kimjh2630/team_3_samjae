@@ -94,7 +94,7 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
               children: [
                 const SizedBox(height: 20),
                 Text(
-                  "${'hello'.tr()}, ${nickname ?? '비회원'} ${"ok_".tr()}",
+                  "${'hello'.tr()}, ${nickname ?? "guest".tr()} ${"ok_".tr()}",
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -173,54 +173,50 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                             ),
                           );
                         },
-                        child: Container(
-                          width: double.infinity,
-                          height: 200,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Colors.blueAccent.shade100,
-                              width: 1,
-                            ),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Image.asset(
-                                'assets/images/aidoc_logo_noname.png',
-                                width: 100, // 아이콘 크기 대신 너비
-                                height: 100, // 높이 지정
-                                fit: BoxFit.contain,
-                              ),
-                              SizedBox(height: 0),
-                              Flexible(
-                                child: Text(
-                                  "hospital_search".tr(),
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 0),
-                              Flexible(
-                                  child: Text(
-                                "quickFindHospital".tr(),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.black54,
-                                ),
-                                textAlign: TextAlign.start,
-                              ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+            child: Container(
+              width: double.infinity,
+              height: 200,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.blueAccent.shade100,
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    'assets/images/aidoc_logo_noname.png',
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "hospital_search".tr(),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "quickFindHospital".tr(),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.black54,
+                    ),
+                    textAlign: TextAlign.start,
+                  ),
+                ],
+              ),
+            ),
+      ),
+                      ),
                     SizedBox(width: 16),
                     Expanded(
                       child: GestureDetector(
@@ -255,7 +251,7 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                                 fit: BoxFit.contain,
                               ),
                               SizedBox(height: 0),
-                              Text(
+                                Text(
                                 "pharmacy_search".tr(),
                                 style: TextStyle(
                                   fontSize: 16,
@@ -264,7 +260,7 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                                 ),
                               ),
                               SizedBox(height: 0),
-                              Text(
+                                Text(
                                 "findPharmacyOnMap".tr(),
                                 style: TextStyle(
                                   fontSize: 10,
@@ -320,21 +316,21 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    "chatbot.chat".tr(),
-                                    style: TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.black87,
+                                      "chatbot.chat".tr(),
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.black87,
+                                      ),
                                     ),
-                                  ),
                                   SizedBox(height: 8),
-                                  Text(
-                                    "chatbot.subchat".tr(),
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.black54,
-                                    ),
-                                    textAlign: TextAlign.start,
+                                    Text(
+                                      "chatbot.subchat".tr(),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.black54,
+                                      ),
+                                      textAlign: TextAlign.start,
                                   ),
                                 ],
                               ),

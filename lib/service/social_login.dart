@@ -68,7 +68,7 @@ class _LoginWidgetState extends State<LoginWidget> {
 
   @override
   void dispose() {
-    _db.disconnect();
+    // _db.disconnect();
     super.dispose();
   }
 
@@ -120,6 +120,7 @@ class _LoginWidgetState extends State<LoginWidget> {
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
+
       if (googleAuth.idToken == null) {
         throw Exception("Google ID Token이 없습니다. Firebase 인증 실패");
       }
@@ -155,6 +156,16 @@ class _LoginWidgetState extends State<LoginWidget> {
           print('Google 계정 로그인 성공 (Firebase)');
           print('이름 : ${user.displayName}');
           print('이메일 : ${user.email}');
+
+          Provider.of<AppState>(context, listen: false).setLoggedIn(true);
+          Provider.of<AppState>(context, listen: false).nickname = user.displayName;
+
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (_) => nav_MainPage(initialIndex: 0),),
+                (Route<dynamic> route) => false,
+          );
         } catch (dbError) {
           print('DB 저장 실패: $dbError');
           // DB 저장 실패해도 로그인은 유지

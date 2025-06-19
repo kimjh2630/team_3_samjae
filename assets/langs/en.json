@@ -257,5 +257,6 @@
   "reservation_canceled": "Reservation has been canceled!",
   "change_reservation": "Change reservation",
   "cannot_load_hospital_details": "Unable to load hospital details.",
-  "cancel": "Cancel"
+  "cancel": "Cancel",
+  "guest": "GUEST"
 }

@@ -256,7 +256,7 @@ class _EmergencyMapPageState extends State<EmergencyMapPage> {
                   'emergency.no_facility'.tr(),
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.red,
+                    color: Colors.black87,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
