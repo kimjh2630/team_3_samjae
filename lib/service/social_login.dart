@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:project/service/database_service.dart';
 import 'package:project/widgets/language_dialog.dart';
 import 'package:project/widgets/nav_main_page.dart';
 import '../hospital/hospital_main.dart';
@@ -14,6 +15,7 @@ import '../service/auth_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
+import 'database_service.dart';
 
 //로그인 플랫폼 구분용 enum
 enum LoginPlatform {google, local,}
@@ -34,8 +36,12 @@ class _LoginWidgetState extends State<LoginWidget> {
   String? profileImage; //프로필 이미지 URL (구글 전용)
   User? _user; // Firebase User 객체
 
+  //DB 저장을 위한 서비스 인스턴스
+  final DatabaseService _db = DatabaseService();
+
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email']);
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email'],
+      serverClientId: '399398963854-dh1b6tgh5sol88q87jcg80edo4n7nomk.apps.googleusercontent.com',);
 
   @override
   void initState() {
@@ -62,6 +68,7 @@ class _LoginWidgetState extends State<LoginWidget> {
 
   @override
   void dispose() {
+    _db.disconnect();
     super.dispose();
   }
 
@@ -112,55 +119,51 @@ class _LoginWidgetState extends State<LoginWidget> {
       if (googleUser == null) return; // 로그인 취소
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      if (googleAuth.idToken == null) {
+        throw Exception("Google ID Token이 없습니다. Firebase 인증 실패");
+      }
+
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // Firebase에 로그인 (Google만)
+      // Firebase에 로그인
       UserCredential userCredential = await _auth.signInWithCredential(credential);
       User? user = userCredential.user;
 
-      if (user != null && googleAuth.idToken != null) {
-        // 1. API 서버에 idToken 전달
-        final response = await AuthService.socialLogin('google', googleAuth.idToken!);
-        print('구글 소셜 로그인 API 응답: \\${response.statusCode} \\${response.body}');
-
-        if (response.statusCode == 200) {
-          final data = jsonDecode(utf8.decode(response.bodyBytes));
-          await AuthService.saveToken(data['access_token']);
-          await AuthService.saveRefreshToken(data['refresh_token']);
-          await AuthService.saveUserInfo(data['email'], data['platform']);
-
-          Provider.of<AppState>(context, listen: false).setLoggedIn(true);
-          Provider.of<AppState>(context, listen: false).nickname = data['nickname'];
+      if (user != null) {
+        try {
+          // DB에 사용자 정보 저장
+          await _db.saveUserInfo(
+            nickname: user.displayName ?? '익명',
+            email: user.email ?? '',
+            loginPlatform: 'google',
+            profileImage: user.photoURL ?? '',
+            firebaseUid: user.uid,
+          );
 
           await _updateLoginState(
             loggedIn: true,
             platform: 'google',
-            nick: data['nickname'],
-            mail: data['email'],
-            image: data['profile_image'],
+            nick: user.displayName,
+            mail: user.email,
+            image: user.photoURL,
           );
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => nav_MainPage()),
-            );
-          }
-        } else {
-          print('구글 소셜 로그인 API 실패: \\${response.body}');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('구글 로그인 서버 연동 실패: \\${response.body}')),
-            );
-          }
-        }
-      } else {
-        print('Google 로그인 실패: idToken 없음');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Google 로그인에 실패했습니다(idToken 없음)')),
+
+          print('Google 계정 로그인 성공 (Firebase)');
+          print('이름 : ${user.displayName}');
+          print('이메일 : ${user.email}');
+        } catch (dbError) {
+          print('DB 저장 실패: $dbError');
+          // DB 저장 실패해도 로그인은 유지
+          await _updateLoginState(
+            loggedIn: true,
+            platform: 'google',
+            nick: user.displayName,
+            mail: user.email,
+            image: user.photoURL,
           );
         }
       }

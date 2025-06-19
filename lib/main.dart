@@ -99,6 +99,7 @@ class MyApp extends StatelessWidget {
     // 앱 시작 시 닉네임을 AppState에 초기화
     _initNickname(context);
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: '소셜 로그인 + 지도 예제',
       // 앱의 기본 테마 설정
       theme: ThemeData(

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:project/service/auth_service.dart';
@@ -16,10 +18,16 @@ import '../component/medical_facility.dart';
 /// 예약 가능한 날짜와 시간을 선택하고, 로그인 상태를 확인한 후 예약을 완료할 수 있습니다.
 class HospitalReservationPage extends StatefulWidget {
   final MedicalFacility facility;
+  final DateTime? initialDate;
+  final String? initialTime;
+  final int? reservationId;
 
   const HospitalReservationPage({
     Key? key,
     required this.facility,
+    this.initialDate,
+    this.initialTime,
+    this.reservationId,
   }) : super(key: key);
 
   @override
@@ -29,7 +37,7 @@ class HospitalReservationPage extends StatefulWidget {
 
 class _HospitalReservationPageState extends State<HospitalReservationPage> {
   /// 선택된 예약 날짜
-  DateTime selectedDate = DateTime.now();
+  late DateTime? selectedDate;
 
   /// 선택된 예약 시간
   String? selectedTime;
@@ -48,12 +56,42 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
   @override
   void initState() {
     super.initState();
-    // 오늘이 운영 종료된 병원이라면 selectedDate를 내일로 초기화
-    final now = DateTime.now();
-    final todayStatus = widget.facility.calculateTodayOpenStatus();
-    if (todayStatus.contains("closed".tr())) {
-      selectedDate = DateTime(now.year, now.month, now.day).add(Duration(days: 1));
+    // 예약변경이면 초기값 세팅
+    DateTime? rawInitialDate = widget.initialDate;
+    DateTime? firstSelectable;
+    if (rawInitialDate != null) {
+      firstSelectable = _findFirstSelectableDate(
+        rawInitialDate,
+        _getFirstDate(),
+        _getLastDate(),
+        _selectableDayPredicate,
+      );
+      if (firstSelectable == null) {
+        // 선택 가능한 날짜가 하나도 없을 때
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('예약 가능한 날짜가 없습니다.'), backgroundColor: Colors.red),
+          );
+        });
+      }
+      selectedDate = firstSelectable;
+    } else {
+      firstSelectable = _findFirstSelectableDate(
+        _getFirstDate(),
+        _getFirstDate(),
+        _getLastDate(),
+        _selectableDayPredicate,
+      );
+      if (firstSelectable == null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('예약 가능한 날짜가 없습니다.'), backgroundColor: Colors.red),
+          );
+        });
+      }
+      selectedDate = firstSelectable;
     }
+    selectedTime = widget.initialTime;
     _generateAvailableTimes();
     _loadPlatform();
   }
@@ -83,7 +121,7 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
     availableTimes.clear();
     TimeOfDay currentTime = openTime;
     final now = DateTime.now();
-    final isToday = selectedDate.year == now.year && selectedDate.month == now.month && selectedDate.day == now.day;
+    final isToday = selectedDate != null && selectedDate!.year == now.year && selectedDate!.month == now.month && selectedDate!.day == now.day;
     while (currentTime.hour < endTime.hour ||
         (currentTime.hour == endTime.hour &&
             currentTime.minute <= endTime.minute)) {
@@ -148,7 +186,7 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
       return;
     }
     if (selectedTime == null) return;
-    final dateStr = '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
+    final dateStr = '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}';
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -177,39 +215,84 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
       ),
     );
     if (confirm == true) {
-      final reservation = Reservation(
-        hospitalName: widget.facility.dutyName ?? '',
-        hospitalAddress: widget.facility.dutyAddr ?? '',
-        reservationDate: selectedDate,
-        reservationTime: selectedTime!,
-        userId: 'temp_user_id',
-        hospitalTel: widget.facility.dutyTel1,
-        hospitalLat: widget.facility.wgs84Lat,
-        hospitalLon: widget.facility.wgs84Lon,
-        openTime: widget.facility.dutyTime1s,
-        closeTime: widget.facility.dutyTime1c,
-        dutyTime1s: widget.facility.dutyTime1s,
-        dutyTime2s: widget.facility.dutyTime2s,
-        dutyTime3s: widget.facility.dutyTime3s,
-        dutyTime4s: widget.facility.dutyTime4s,
-        dutyTime5s: widget.facility.dutyTime5s,
-        dutyTime6s: widget.facility.dutyTime6s,
-        dutyTime7s: widget.facility.dutyTime7s,
-        dutyTime8s: widget.facility.dutyTime8s,
-        dutyTime1c: widget.facility.dutyTime1c,
-        dutyTime2c: widget.facility.dutyTime2c,
-        dutyTime3c: widget.facility.dutyTime3c,
-        dutyTime4c: widget.facility.dutyTime4c,
-        dutyTime5c: widget.facility.dutyTime5c,
-        dutyTime6c: widget.facility.dutyTime6c,
-        dutyTime7c: widget.facility.dutyTime7c,
-        dutyTime8c: widget.facility.dutyTime8c,
-      );
-      ReservationService.addReservation(reservation);
+      // 1. 회원 userId 조회
+      final userInfo = await AuthService.getUserInfo();
+      final email = userInfo['email'];
+      final platform = userInfo['platform'];
+      int? userId;
+      if (email != null && platform != null) {
+        final response = await AuthService.getUser(email, platform);
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          userId = data['id'];
+        }
+      }
+      final dateStr = '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}';
+      // 2. DB에 예약 정보 저장 (변경/신규 분기)
+      if (userId != null) {
+        if (widget.reservationId != null) {
+          // 예약변경
+          await ReservationService.updateReservation(
+            reservationId: widget.reservationId!,
+            reservationDate: dateStr,
+            reservationTime: selectedTime!,
+          );
+          // 로컬 리스트도 업데이트
+          ReservationService.updateReservationLocal(
+            widget.reservationId!,
+            selectedDate!,
+            selectedTime!,
+          );
+        } else {
+          // 신규 예약
+          final newReservationId = await ReservationService.createReservation(
+            userId: userId,
+            hospitalId: widget.facility.hpid ?? '',
+            hospitalName: widget.facility.dutyName ?? '',
+            hospitalAddress: widget.facility.dutyAddr ?? '',
+            reservationDate: dateStr,
+            reservationTime: selectedTime!,
+          );
+          if (newReservationId != null) {
+            final reservation = Reservation(
+              reservationId: newReservationId,
+              hospitalName: widget.facility.dutyName ?? '',
+              hospitalAddress: widget.facility.dutyAddr ?? '',
+              reservationDate: selectedDate!,
+              reservationTime: selectedTime!,
+              userId: userId?.toString() ?? 'temp_user_id',
+              hospitalTel: widget.facility.dutyTel1,
+              hospitalLat: widget.facility.wgs84Lat,
+              hospitalLon: widget.facility.wgs84Lon,
+              openTime: widget.facility.dutyTime1s,
+              closeTime: widget.facility.dutyTime1c,
+              dutyTime1s: widget.facility.dutyTime1s,
+              dutyTime2s: widget.facility.dutyTime2s,
+              dutyTime3s: widget.facility.dutyTime3s,
+              dutyTime4s: widget.facility.dutyTime4s,
+              dutyTime5s: widget.facility.dutyTime5s,
+              dutyTime6s: widget.facility.dutyTime6s,
+              dutyTime7s: widget.facility.dutyTime7s,
+              dutyTime8s: widget.facility.dutyTime8s,
+              dutyTime1c: widget.facility.dutyTime1c,
+              dutyTime2c: widget.facility.dutyTime2c,
+              dutyTime3c: widget.facility.dutyTime3c,
+              dutyTime4c: widget.facility.dutyTime4c,
+              dutyTime5c: widget.facility.dutyTime5c,
+              dutyTime6c: widget.facility.dutyTime6c,
+              dutyTime7c: widget.facility.dutyTime7c,
+              dutyTime8c: widget.facility.dutyTime8c,
+              status: '예약완료',
+              hospitalId: widget.facility.hpid ?? '',
+            );
+            ReservationService.addReservation(reservation);
+          }
+        }
+      }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("reservation.success".tr()),
+          const SnackBar(
+            content: Text('예약이 확정되었습니다!'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
           ),
@@ -221,6 +304,76 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
         );
       }
     }
+  }
+
+  // 선택 가능한 첫 날짜를 찾는 함수 (없으면 null)
+  DateTime? _findFirstSelectableDate(DateTime initial, DateTime firstDate, DateTime lastDate, bool Function(DateTime) predicate) {
+    // initial이 선택 가능하면 그걸 반환
+    if (predicate(initial)) return initial;
+    DateTime date = firstDate;
+    while (date.isBefore(lastDate) || date.isAtSameMomentAs(lastDate)) {
+      if (predicate(date)) return date;
+      date = date.add(Duration(days: 1));
+    }
+    return null; // 선택 가능한 날짜가 없음
+  }
+
+  // firstDate, lastDate, selectableDayPredicate를 initState에서 사용하기 위해 함수로 분리
+  DateTime _getFirstDate() {
+    final now = DateTime.now();
+    final todayStatus = widget.facility.calculateTodayOpenStatus();
+    if (todayStatus.contains('운영종료')) {
+      return DateTime(now.year, now.month, now.day).add(Duration(days: 1));
+    }
+    return DateTime.now();
+  }
+  DateTime _getLastDate() => DateTime.now().add(Duration(days: 30));
+  bool _selectableDayPredicate(DateTime date) {
+    final now = DateTime.now();
+    final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
+    final todayStatus = widget.facility.calculateTodayOpenStatus();
+    if (isToday && todayStatus.contains('운영종료')) {
+      return false;
+    }
+    int weekday = date.weekday;
+    String? startTime;
+    String? endTime;
+    switch (weekday) {
+      case 1:
+        startTime = widget.facility.dutyTime1s;
+        endTime = widget.facility.dutyTime1c;
+        break;
+      case 2:
+        startTime = widget.facility.dutyTime2s;
+        endTime = widget.facility.dutyTime2c;
+        break;
+      case 3:
+        startTime = widget.facility.dutyTime3s;
+        endTime = widget.facility.dutyTime3c;
+        break;
+      case 4:
+        startTime = widget.facility.dutyTime4s;
+        endTime = widget.facility.dutyTime4c;
+        break;
+      case 5:
+        startTime = widget.facility.dutyTime5s;
+        endTime = widget.facility.dutyTime5c;
+        break;
+      case 6:
+        startTime = widget.facility.dutyTime6s;
+        endTime = widget.facility.dutyTime6c;
+        break;
+      case 7:
+        startTime = widget.facility.dutyTime7s;
+        endTime = widget.facility.dutyTime7c;
+        break;
+    }
+    bool isNoInfo = (startTime == null || startTime.isEmpty || startTime == '정보없음') &&
+        (endTime == null || endTime.isEmpty || endTime == '정보없음');
+    if (isNoInfo) {
+      return false;
+    }
+    return true;
   }
 
   @override
@@ -238,7 +391,7 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
     }
 
     // 오늘 날짜 & 운영종료 상태면 예약 불가 안내 (단, 오늘만 해당)
-    final isToday = selectedDate.year == DateTime.now().year && selectedDate.month == DateTime.now().month && selectedDate.day == DateTime.now().day;
+    final isToday = selectedDate != null && selectedDate!.year == DateTime.now().year && selectedDate!.month == DateTime.now().month && selectedDate!.day == DateTime.now().day;
     final todayStatus = widget.facility.calculateTodayOpenStatus();
     final isClosedToday = isToday && todayStatus.contains("closed".tr());
 
@@ -309,83 +462,39 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 10),
-            Theme(
-              data: Theme.of(context).copyWith(
-                colorScheme: ColorScheme.light(
-                  primary: Color(0xFF4BB8EA), //  선택된 날짜 색상
-                  onPrimary: Colors.white, //  선택된 날짜의 텍스트 색상
+            if (selectedDate == null) ...[
+              Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red, size: 24),
+                  SizedBox(width: 8),
+                  Text("no_available_dates".tr(), style: TextStyle(fontSize: 16, color: Colors.red)),
+                ],
+              ),
+              SizedBox(height: 8),
+              Text("check_hospital_schedule".tr()),
+            ] else ...[
+              Theme(
+                data: Theme.of(context).copyWith(
+                  colorScheme: ColorScheme.light(
+                    primary: Color(0xFF4BB8EA), //  선택된 날짜 색상
+                    onPrimary: Colors.white, //  선택된 날짜의 텍스트 색상
+                  ),
+                ),
+                child: CalendarDatePicker(
+                  initialDate: selectedDate!, // null 아님이 보장됨
+                  firstDate: _getFirstDate(),
+                  lastDate: _getLastDate(),
+                  onDateChanged: (date) {
+                    setState(() {
+                      selectedDate = date;
+                      _generateAvailableTimes(); // 날짜 변경 시 시간 목록 재생성
+                      selectedTime = null; // 시간 선택 초기화
+                    });
+                  },
+                  selectableDayPredicate: _selectableDayPredicate,
                 ),
               ),
-              child: CalendarDatePicker(
-                initialDate: selectedDate,
-                firstDate: (() {
-                  final now = DateTime.now();
-                  final todayStatus = widget.facility.calculateTodayOpenStatus();
-                  // 오늘이 운영 종료면 내일부터 예약 가능
-                  if (todayStatus.contains("closed".tr())) {
-                    return DateTime(now.year, now.month, now.day).add(Duration(days: 1));
-                  }
-                  return DateTime.now();
-                })(),
-                lastDate: DateTime.now().add(Duration(days: 30)),
-                onDateChanged: (date) {
-                  setState(() {
-                    selectedDate = date;
-                    _generateAvailableTimes(); // 날짜 변경 시 시간 목록 재생성
-                    selectedTime = null; // 시간 선택 초기화
-                  });
-                },
-                selectableDayPredicate: (date) {
-                  final now = DateTime.now();
-                  final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
-                  final todayStatus = widget.facility.calculateTodayOpenStatus();
-                  // 오늘이면서 운영 종료면 비활성화
-                  if (isToday && todayStatus.contains("closed".tr())) {
-                    return false;
-                  }
-                  // 해당 날짜의 요일에 진료시간 정보가 없으면 비활성화
-                  int weekday = date.weekday; // 1(월) ~ 7(일)
-                  String? startTime;
-                  String? endTime;
-                  switch (weekday) {
-                    case 1:
-                      startTime = widget.facility.dutyTime1s;
-                      endTime = widget.facility.dutyTime1c;
-                      break;
-                    case 2:
-                      startTime = widget.facility.dutyTime2s;
-                      endTime = widget.facility.dutyTime2c;
-                      break;
-                    case 3:
-                      startTime = widget.facility.dutyTime3s;
-                      endTime = widget.facility.dutyTime3c;
-                      break;
-                    case 4:
-                      startTime = widget.facility.dutyTime4s;
-                      endTime = widget.facility.dutyTime4c;
-                      break;
-                    case 5:
-                      startTime = widget.facility.dutyTime5s;
-                      endTime = widget.facility.dutyTime5c;
-                      break;
-                    case 6:
-                      startTime = widget.facility.dutyTime6s;
-                      endTime = widget.facility.dutyTime6c;
-                      break;
-                    case 7:
-                      startTime = widget.facility.dutyTime7s;
-                      endTime = widget.facility.dutyTime7c;
-                      break;
-                  }
-                  bool isNoInfo = (startTime == null || startTime.isEmpty || startTime == "noInformation".tr()) &&
-                                  (endTime == null || endTime.isEmpty || endTime == "noInformation".tr());
-                  if (isNoInfo) {
-                    return false;
-                  }
-                  return true;
-                },
-              ),
-            ),
+            ],
             SizedBox(height: 10),
             // 시간 선택 섹션
             Text(

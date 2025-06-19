@@ -168,8 +168,8 @@
   "chatbot.input_message": "Please enter a message...",
   "error": "An error has occurred.",
   "ok": "OK",
-  "home.title": "main_screen",
-  "pharmacy_search": "pharmacy_search",
+  "home.title": "main screen",
+  "pharmacy_search": "pharmacy search",
   "chatbot.chat": "Chat with the chatbot",
   "chatbot.subchat": "Try chatting with the chatbot.\nFrom finding directions to hospitals, all in one!",
   "home": "Home",
@@ -247,5 +247,15 @@
   "startAsNonMember": "Start as Non-member",
   "quickFindHospital": "Quickly find nearby hospitals and make reservations easily!",
   "findPharmacyOnMap": "Find pharmacies directly on the map!",
-  "ok_": "Sir/Madam"
+  "ok_": "Sir/Madam",
+  "notification": "notification",
+  "log_in": "LOG IN",
+  "no_available_dates": "No available dates.",
+  "check_hospital_schedule": "Please check the hospital’s consultation schedule/operating hours.",
+  "reservation_list": "Reservation list",
+  "cancel_reservation": "Cancel reservation",
+  "reservation_canceled": "Reservation has been canceled!",
+  "change_reservation": "Change reservation",
+  "cannot_load_hospital_details": "Unable to load hospital details.",
+  "cancel": "Cancel"
 }

@@ -57,6 +57,7 @@ dependencies:
 
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.10.0
   flutter_test:
     sdk: flutter
 
@@ -118,3 +119,7 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+flutter_icons:
+  android: true
+  ios: true      # iOS 아이콘도 함께 바꾸려면 true
+  image_path: "assets/images/aidoc_logo_main.png"

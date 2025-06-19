@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>399398963854-flg1i1cgglo8vd3juca70ce9o5r6nk7i.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.399398963854-flg1i1cgglo8vd3juca70ce9o5r6nk7i</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>399398963854-0n0hgqfs2ic1k2eagfina00n2urhdrg1.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyDW70gZoUxlEAGHqWcdzZvUhW0t4sD_DIA</string>
+	<key>GCM_SENDER_ID</key>
+	<string>399398963854</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.project</string>
+	<key>PROJECT_ID</key>
+	<string>robust-arcadia-460300-s2</string>
+	<key>STORAGE_BUCKET</key>
+	<string>robust-arcadia-460300-s2.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:399398963854:ios:f6498014f73cabe2f497df</string>
+</dict>
+</plist>

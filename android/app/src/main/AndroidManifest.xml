@@ -33,6 +33,7 @@
             android:name="com.kakao.sdk.AppKey"
             android:value="${KAKAO_SDK_APP_KEY}" />
 
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

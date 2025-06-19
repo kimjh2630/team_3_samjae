@@ -7,7 +7,7 @@ import 'dart:math';
 
 class EmergencyService {
   // 서버의 nearby 데이터 엔드포인트로 변경
-  static const String nearbyUrl = 'http://10.0.2.2:8000/api/emergency/nearby';
+  static const String nearbyUrl = 'https://900a-121-172-220-55.ngrok-free.app/api/emergency/nearby';
 
   // 거리를 km 단위로 변환하는 함수
   static String formatDistance(double? meters) {

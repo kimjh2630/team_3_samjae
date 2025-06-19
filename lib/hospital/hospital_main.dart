@@ -15,7 +15,6 @@ import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import 'dart:async';
 
-
 class HospitalMainPage extends StatefulWidget {
   const HospitalMainPage({Key? key}) : super(key: key);
 
@@ -27,10 +26,7 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
   Position? currentPosition;
 
   void _showLanguageDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => const LanguageDialog(),
-    );
+    showDialog(context: context, builder: (context) => const LanguageDialog());
   }
 
   final PageController _controller = PageController(viewportFraction: 1);
@@ -63,7 +59,7 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
 
   @override
   void dispose() {
-    _timer?.cancel();  // 타이머 중지
+    _timer?.cancel(); // 타이머 중지
     _controller.dispose();
     super.dispose();
   }
@@ -77,10 +73,9 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
         elevation: 0,
         centerTitle: true,
         automaticallyImplyLeading: false,
-        title: Text("home_title".tr(),
-          style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.black87),
+        title: Text(
+          "home_title".tr(),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
         ),
         actions: [
           IconButton(
@@ -100,12 +95,16 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                 const SizedBox(height: 20),
                 Text(
                   "${'hello'.tr()}, ${nickname ?? '비회원'} ${"ok_".tr()}",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
                 SizedBox(height: 10),
 
                 SizedBox(
-                  height: 130,  // 슬라이더 높이 조절
+                  height: 130, // 슬라이더 높이 조절
                   width: double.infinity,
                   child: PageView.builder(
                     controller: _controller,
@@ -169,7 +168,8 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                             context,
                             MaterialPageRoute(
                               builder:
-                                  (context) => hospital.HospitalSearchResultPage(),
+                                  (context) =>
+                                      hospital.HospitalSearchResultPage(),
                             ),
                           );
                         },
@@ -188,26 +188,33 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                            Image.asset(
-                            'assets/images/aidoc_logo_noname.png',
-                            width: 100,    // 아이콘 크기 대신 너비
-                            height: 100,   // 높이 지정
-                            fit: BoxFit.contain,
-                            ),
+                              Image.asset(
+                                'assets/images/aidoc_logo_noname.png',
+                                width: 100, // 아이콘 크기 대신 너비
+                                height: 100, // 높이 지정
+                                fit: BoxFit.contain,
+                              ),
                               SizedBox(height: 0),
-                              Text(
-                                "hospital_search".tr(),
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                              Flexible(
+                                child: Text(
+                                  "hospital_search".tr(),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
                                 ),
                               ),
                               SizedBox(height: 0),
-                              Text(
+                              Flexible(
+                                  child: Text(
                                 "quickFindHospital".tr(),
-                                style: TextStyle(fontSize: 10, color: Colors.black54),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.black54,
+                                ),
                                 textAlign: TextAlign.start,
+                              ),
                               ),
                             ],
                           ),
@@ -243,8 +250,8 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                             children: [
                               Image.asset(
                                 'assets/images/aidoc_logo_pha.png',
-                                width: 100,    // 아이콘 크기 대신 너비
-                                height: 100,   // 높이 지정
+                                width: 100, // 아이콘 크기 대신 너비
+                                height: 100, // 높이 지정
                                 fit: BoxFit.contain,
                               ),
                               SizedBox(height: 0),
@@ -259,7 +266,10 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                               SizedBox(height: 0),
                               Text(
                                 "findPharmacyOnMap".tr(),
-                                style: TextStyle(fontSize: 10, color: Colors.black54),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.black54,
+                                ),
                                 textAlign: TextAlign.start,
                               ),
                             ],
@@ -300,8 +310,8 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                           children: [
                             Image.asset(
                               'assets/images/aidoc_logo_chat.png',
-                              width: 100,    // 아이콘 크기 대신 너비
-                              height: 100,   // 높이 지정
+                              width: 100, // 아이콘 크기 대신 너비
+                              height: 100, // 높이 지정
                               fit: BoxFit.contain,
                             ),
                             SizedBox(width: 20),
@@ -320,7 +330,10 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                                   SizedBox(height: 8),
                                   Text(
                                     "chatbot.subchat".tr(),
-                                    style: TextStyle(fontSize: 13, color: Colors.black54),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.black54,
+                                    ),
                                     textAlign: TextAlign.start,
                                   ),
                                 ],
@@ -337,7 +350,9 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => EmergencyMapPage()),
+                      MaterialPageRoute(
+                        builder: (context) => EmergencyMapPage(),
+                      ),
                     );
                   },
                   child: Container(
@@ -346,30 +361,27 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.redAccent,
-                        width: 1,
-                      ),
+                      border: Border.all(color: Colors.redAccent, width: 1),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         Image.asset(
                           'assets/images/aidoc_logo_noname_em.png',
-                          width: 100,    // 아이콘 크기 대신 너비
-                          height: 100,   // 높이 지정
+                          width: 100, // 아이콘 크기 대신 너비
+                          height: 100, // 높이 지정
                           fit: BoxFit.contain,
                         ),
                         SizedBox(width: 40),
                         Flexible(
                           child: Text(
-                          "emergency.nearby".tr(),
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.red.shade700,
+                            "emergency.nearby".tr(),
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red.shade700,
+                            ),
                           ),
-                        ),
                         ),
                       ],
                     ),
@@ -383,7 +395,6 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
     );
   }
 }
-
 
 /// 2) 반투명 폴리곤을 오버레이하는 CustomPainter
 class PolygonOverlay extends StatelessWidget {
@@ -406,16 +417,16 @@ class _PolygonPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint =
-    Paint()
-      ..color = Colors.white10.withOpacity(0.3)
-      ..style = PaintingStyle.fill;
+        Paint()
+          ..color = Colors.white10.withOpacity(0.3)
+          ..style = PaintingStyle.fill;
 
     final path =
-    Path()
-      ..moveTo(size.width * 0.2, size.height * 0.1)
-      ..lineTo(size.width * 0.8, size.height * 0.25)
-      ..lineTo(size.width * 0.5, size.height * 0.6)
-      ..close();
+        Path()
+          ..moveTo(size.width * 0.2, size.height * 0.1)
+          ..lineTo(size.width * 0.8, size.height * 0.25)
+          ..lineTo(size.width * 0.5, size.height * 0.6)
+          ..close();
 
     canvas.drawPath(path, paint);
     // 더 많은 폴리곤을 그리고 싶으면 여기 추가

@@ -10,7 +10,7 @@ import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://10.0.2.2:8000'; // API 서버 주소
+  static const String baseUrl = 'https://900a-121-172-220-55.ngrok-free.app'; // API 서버 주소
   static const String jwtKey = 'jwt_token';
   static const String refreshTokenKey = 'refresh_token';
   static const String userEmailKey = 'user_email';

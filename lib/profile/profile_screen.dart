@@ -145,14 +145,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.person_outline,
                     title:"editProfile".tr(),
                     onTap: () async {
-                      final result = await Navigator.push(
+                      if (!isLoggedIn) {
+                        showDialog(
+                          context: context,
+                          builder: (_) =>
+                              AlertDialog(
+
+                                title: Text("notification".tr(),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),),
+                                content: Text( "log_in".tr(),
+                                textAlign: TextAlign.center,),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: Text("ok".tr()),
+                                  ),
+                                ],
+                              ),
+                        );
+                        return;
+                      }
+
+                      Navigator.push<bool>(
                         context,
                         MaterialPageRoute(
-                            builder: (_) =>   EditProfilePage(currentNickname: nickname)),
-                      );
-                      if (result == true) {
-                        // Handle nickname update
-                      }
+                          builder: (_) =>
+                              EditProfilePage(currentNickname: nickname),
+                        ),
+                      ).then((result) {
+                        if (result == true) {}
+                      });
                     },
                   ),
                 ],
@@ -176,7 +200,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                   ),
                   ProfileMenuItem(
-                    icon: Icons.language,
+                    icon: Icons.person_outline,
                     title: "agreeToTermsAndPrivacy".tr(),
                     onTap: () async {
                       final url = Uri.parse('https://www.freeprivacypolicy.com/live/98c95c6c-778b-457c-bbf2-e77eefc8c442');

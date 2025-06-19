@@ -4,12 +4,12 @@ import 'package:http/http.dart' as http;
 import '../component/medical_facility.dart';
 import 'package:geolocator/geolocator.dart';
 
-const _serverApiUrl = 'http://localhost:8000/api/pharmacy/all';
+const _serverApiUrl = 'https://900a-121-172-220-55.ngrok-free.app/api/pharmacy/all';
 
 class PharmacyService {
   static Future<List<MedicalFacility>> fetchNearbyPharmacies(Position position) async {
     final uri = Uri.parse(
-        'http://10.0.2.2:8000/api/pharmacy/nearby'
+        'https://900a-121-172-220-55.ngrok-free.app/api/pharmacy/nearby'
             '?latitude=${position.latitude}&longitude=${position.longitude}&radius=500'
     );
     final resp = await http.get(uri);

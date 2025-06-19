@@ -46,7 +46,7 @@ class MainBottomNavBar extends StatelessWidget {
       items: [
         BottomNavigationBarItem(icon: Icon(Icons.home),              label: "home".tr()),
         BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: "chatbot".tr()),
-        BottomNavigationBarItem(icon: Icon(Icons.history),           label: "reservation.status".tr()),
+        BottomNavigationBarItem(icon: Icon(Icons.history),           label: "reservation_list".tr()),
         BottomNavigationBarItem(icon: Icon(Icons.person),            label: "myinfo".tr()),
       ],
     );

@@ -190,7 +190,7 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.indigo.shade50,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0,
         centerTitle: false,
@@ -224,7 +224,9 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
                     controller: _emailController,
                     decoration: InputDecoration(
                       labelText: "email".tr(),
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
@@ -238,11 +240,14 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
                     },
                   ),
                   const SizedBox(height: 16),
+
                   TextFormField(
                     controller: _passwordController,
                     decoration: InputDecoration(
                       labelText: "password".tr(),
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     obscureText: true,
                     validator: (value) {
@@ -261,7 +266,9 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
                       controller: _nicknameController,
                       decoration: InputDecoration(
                         labelText: "nickname".tr(),
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -277,12 +284,25 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
                     height: 50,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _submitForm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4BB8EA),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
                       child: _isLoading
                           ? const CircularProgressIndicator()
-                          : Text(_isLogin ? "login".tr() : "signup".tr()),
+                          : Text(_isLogin ? "login".tr() : "signup".tr(),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
+
                   TextButton(
                     onPressed: () {
                       setState(() {
@@ -296,6 +316,9 @@ class _EmailAuthWidgetState extends State<EmailAuthWidget> {
                     },
                     child: Text(
                       _isLogin ? "noAccountSignup".tr() : "alreadyHaveAccount".tr(),
+                      style: TextStyle(
+                        color: Color(0xFF146DA3),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 40), // 하단 여백 추가
