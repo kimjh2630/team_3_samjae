@@ -10,7 +10,7 @@ import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 
 // 서버 API 엔드포인트 (예시: 로컬 개발 환경)
-const String serverApiUrl = 'https://a562-183-109-28-98.ngrok-free.app/api/pharmacy/all';
+const String serverApiUrl = 'https://c270-121-172-220-55.ngrok-free.app/api/pharmacy/all';
 
 // 두 지점 간 거리를 미터 단위로 계산하는 함수 (Haversine 공식)
 double calculateDistance(double lat1, double lon1, double lat2, double lon2) {

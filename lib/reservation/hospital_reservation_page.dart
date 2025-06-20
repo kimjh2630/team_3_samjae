@@ -70,7 +70,10 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
         // 선택 가능한 날짜가 하나도 없을 때
         WidgetsBinding.instance.addPostFrameCallback((_) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('예약 가능한 날짜가 없습니다.'), backgroundColor: Colors.red),
+            const SnackBar(
+              content: Text('예약 가능한 날짜가 없습니다.'),
+              backgroundColor: Colors.red,
+            ),
           );
         });
       }
@@ -85,7 +88,10 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
       if (firstSelectable == null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('예약 가능한 날짜가 없습니다.'), backgroundColor: Colors.red),
+            const SnackBar(
+              content: Text('예약 가능한 날짜가 없습니다.'),
+              backgroundColor: Colors.red,
+            ),
           );
         });
       }
@@ -121,13 +127,18 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
     availableTimes.clear();
     TimeOfDay currentTime = openTime;
     final now = DateTime.now();
-    final isToday = selectedDate != null && selectedDate!.year == now.year && selectedDate!.month == now.month && selectedDate!.day == now.day;
+    final isToday =
+        selectedDate != null &&
+        selectedDate!.year == now.year &&
+        selectedDate!.month == now.month &&
+        selectedDate!.day == now.day;
     while (currentTime.hour < endTime.hour ||
         (currentTime.hour == endTime.hour &&
             currentTime.minute <= endTime.minute)) {
       // 오늘 예약이면 현재시간 이전은 제외
       if (isToday) {
-        if (currentTime.hour > now.hour || (currentTime.hour == now.hour && currentTime.minute > now.minute)) {
+        if (currentTime.hour > now.hour ||
+            (currentTime.hour == now.hour && currentTime.minute > now.minute)) {
           availableTimes.add(
             '${currentTime.hour.toString().padLeft(2, '0')}:${currentTime.minute.toString().padLeft(2, '0')}',
           );
@@ -152,27 +163,27 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
       context: context,
       builder:
           (context) => AlertDialog(
-        title: Text('login_required'.tr()),
-        content: Text('login_to_reserve'.tr()),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: Text('cancel'.tr()),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginWidget()),
+            title: Text('login_required'.tr()),
+            content: Text('login_to_reserve'.tr()),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: Text('cancel'.tr()),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginWidget()),
                     (route) => false,
-              );
-            },
-            child: Text('login'.tr()),
+                  );
+                },
+                child: Text('login'.tr()),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -186,33 +197,38 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
       return;
     }
     if (selectedTime == null) return;
-    final dateStr = '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}';
+    final dateStr =
+        '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}';
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text( "viewReservationInfo".tr()),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('병원명: ${widget.facility.dutyName ?? ''}'),
-            Text('날짜: $dateStr'),
-            Text('시간: $selectedTime'),
-            const SizedBox(height: 16),
-            Text("confirmReservation".tr(), style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text("reservation.cancel".tr()),
+      builder:
+          (context) => AlertDialog(
+            title: Text("viewReservationInfo".tr()),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('병원명: ${widget.facility.dutyName ?? ''}'),
+                Text('날짜: $dateStr'),
+                Text('시간: $selectedTime'),
+                const SizedBox(height: 16),
+                Text(
+                  "confirmReservation".tr(),
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text("reservation.cancel".tr()),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text("reservation.confirm".tr()),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text("reservation.confirm".tr()),
-          ),
-        ],
-      ),
     );
     if (confirm == true) {
       // 1. 회원 userId 조회
@@ -227,7 +243,8 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
           userId = data['id'];
         }
       }
-      final dateStr = '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}';
+      final dateStr =
+          '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}';
       // 2. DB에 예약 정보 저장 (변경/신규 분기)
       if (userId != null) {
         if (widget.reservationId != null) {
@@ -300,14 +317,21 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
         await Future.delayed(const Duration(milliseconds: 500));
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => nav_MainPage(initialIndex: 2)),
+          MaterialPageRoute(
+            builder: (context) => nav_MainPage(initialIndex: 2),
+          ),
         );
       }
     }
   }
 
   // 선택 가능한 첫 날짜를 찾는 함수 (없으면 null)
-  DateTime? _findFirstSelectableDate(DateTime initial, DateTime firstDate, DateTime lastDate, bool Function(DateTime) predicate) {
+  DateTime? _findFirstSelectableDate(
+    DateTime initial,
+    DateTime firstDate,
+    DateTime lastDate,
+    bool Function(DateTime) predicate,
+  ) {
     // initial이 선택 가능하면 그걸 반환
     if (predicate(initial)) return initial;
     DateTime date = firstDate;
@@ -327,10 +351,13 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
     }
     return DateTime.now();
   }
+
   DateTime _getLastDate() => DateTime.now().add(Duration(days: 30));
+
   bool _selectableDayPredicate(DateTime date) {
     final now = DateTime.now();
-    final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
+    final isToday =
+        date.year == now.year && date.month == now.month && date.day == now.day;
     final todayStatus = widget.facility.calculateTodayOpenStatus();
     if (isToday && todayStatus.contains('운영종료')) {
       return false;
@@ -368,7 +395,8 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
         endTime = widget.facility.dutyTime7c;
         break;
     }
-    bool isNoInfo = (startTime == null || startTime.isEmpty || startTime == '정보없음') &&
+    bool isNoInfo =
+        (startTime == null || startTime.isEmpty || startTime == '정보없음') &&
         (endTime == null || endTime.isEmpty || endTime == '정보없음');
     if (isNoInfo) {
       return false;
@@ -382,16 +410,17 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
     if (_platform != 'local' && _platform != 'google') {
       return Scaffold(
         backgroundColor: Colors.indigo.shade50,
-        appBar: AppBar(
-          centerTitle: true,
-          title: Text('reservation.make'.tr()),
-        ),
+        appBar: AppBar(centerTitle: true, title: Text('reservation.make'.tr())),
         body: Center(child: Text('reservation.login_required'.tr())),
       );
     }
 
     // 오늘 날짜 & 운영종료 상태면 예약 불가 안내 (단, 오늘만 해당)
-    final isToday = selectedDate != null && selectedDate!.year == DateTime.now().year && selectedDate!.month == DateTime.now().month && selectedDate!.day == DateTime.now().day;
+    final isToday =
+        selectedDate != null &&
+        selectedDate!.year == DateTime.now().year &&
+        selectedDate!.month == DateTime.now().month &&
+        selectedDate!.day == DateTime.now().day;
     final todayStatus = widget.facility.calculateTodayOpenStatus();
     final isClosedToday = isToday && todayStatus.contains("closed".tr());
 
@@ -408,146 +437,159 @@ class _HospitalReservationPageState extends State<HospitalReservationPage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 병원 정보 카드
-            SizedBox(
-              width: double.infinity,
-              child: Card(
-                child: Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.facility.dutyName ?? '',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+      body: SafeArea(
+        bottom: true,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 병원 정보 카드
+              SizedBox(
+                width: double.infinity,
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.facility.dutyName ?? '',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 10),
-                      Text(
-                        widget.facility.dutyAddr ?? '',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.normal,
+                        SizedBox(height: 10),
+                        Text(
+                          widget.facility.dutyAddr ?? '',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.normal,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-            // 오늘이 운영 종료된 경우 안내 메시지
-            if (isClosedToday) ...[
-              Row(
-                children: [
-                  Icon(Icons.error_outline, color: Colors.red, size: 24),
-                  SizedBox(width: 8),
-                  Text("closedForToday".tr(), style: TextStyle(fontSize: 16, color: Colors.red)),
-                ],
-              ),
-              SizedBox(height: 8),
-              Text("selectDifferentDateOrRetry".tr()),
-              SizedBox(height: 16),
-            ],
-            // 날짜 선택 섹션
-            Text(
-              'reservation.select_date'.tr(),
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 10),
-            if (selectedDate == null) ...[
-              Row(
-                children: [
-                  Icon(Icons.error_outline, color: Colors.red, size: 24),
-                  SizedBox(width: 8),
-                  Text("no_available_dates".tr(), style: TextStyle(fontSize: 16, color: Colors.red)),
-                ],
-              ),
-              SizedBox(height: 8),
-              Text("check_hospital_schedule".tr()),
-            ] else ...[
-              Theme(
-                data: Theme.of(context).copyWith(
-                  colorScheme: ColorScheme.light(
-                    primary: Color(0xFF4BB8EA), //  선택된 날짜 색상
-                    onPrimary: Colors.white, //  선택된 날짜의 텍스트 색상
-                  ),
-                ),
-                child: CalendarDatePicker(
-                  initialDate: selectedDate!, // null 아님이 보장됨
-                  firstDate: _getFirstDate(),
-                  lastDate: _getLastDate(),
-                  onDateChanged: (date) {
-                    setState(() {
-                      selectedDate = date;
-                      _generateAvailableTimes(); // 날짜 변경 시 시간 목록 재생성
-                      selectedTime = null; // 시간 선택 초기화
-                    });
-                  },
-                  selectableDayPredicate: _selectableDayPredicate,
-                ),
-              ),
-            ],
-            SizedBox(height: 10),
-            // 시간 선택 섹션
-            Text(
-              'reservation.select_time'.tr(),
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 6,
-              children:
-              availableTimes.map((time) {
-                return ChoiceChip(
-                  label: Text(
-                    time,
-                    style: TextStyle(
-                      color:
-                      selectedTime == time
-                          ? Colors.white
-                          : Colors.black,
+                      ],
                     ),
                   ),
-                  selected: selectedTime == time,
-                  selectedColor: Color(0xFF4BB8EA),
-                  checkmarkColor: Colors.white,
-                  // backgroundColor: Colors.indigo.shade50,
-                  onSelected: (selected) {
-                    setState(() {
-                      selectedTime = selected ? time : null;
-                    });
-                  },
-                );
-              }).toList(),
-            ),
-            SizedBox(height: 30),
-            // 예약 확인 버튼
-            Center(
-              child: ElevatedButton(
-                onPressed: selectedTime == null ? null : _showReservationConfirmDialog,
-                child: Text(
-                  'reservation.confirm'.tr(),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                 ),
               ),
-            ),
-          ],
+              SizedBox(height: 20),
+              // 오늘이 운영 종료된 경우 안내 메시지
+              if (isClosedToday) ...[
+                Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red, size: 24),
+                    SizedBox(width: 8),
+                    Text(
+                      "closedForToday".tr(),
+                      style: TextStyle(fontSize: 16, color: Colors.red),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Text("selectDifferentDateOrRetry".tr()),
+                SizedBox(height: 16),
+              ],
+              // 날짜 선택 섹션
+              Text(
+                'reservation.select_date'.tr(),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              if (selectedDate == null) ...[
+                Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red, size: 24),
+                    SizedBox(width: 8),
+                    Text(
+                      "no_available_dates".tr(),
+                      style: TextStyle(fontSize: 16, color: Colors.red),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Text("check_hospital_schedule".tr()),
+              ] else ...[
+                Theme(
+                  data: Theme.of(context).copyWith(
+                    colorScheme: ColorScheme.light(
+                      primary: Color(0xFF4BB8EA), //  선택된 날짜 색상
+                      onPrimary: Colors.white, //  선택된 날짜의 텍스트 색상
+                    ),
+                  ),
+                  child: CalendarDatePicker(
+                    initialDate: selectedDate!,
+                    // null 아님이 보장됨
+                    firstDate: _getFirstDate(),
+                    lastDate: _getLastDate(),
+                    onDateChanged: (date) {
+                      setState(() {
+                        selectedDate = date;
+                        _generateAvailableTimes(); // 날짜 변경 시 시간 목록 재생성
+                        selectedTime = null; // 시간 선택 초기화
+                      });
+                    },
+                    selectableDayPredicate: _selectableDayPredicate,
+                  ),
+                ),
+              ],
+              SizedBox(height: 10),
+              // 시간 선택 섹션
+              Text(
+                'reservation.select_time'.tr(),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                runSpacing: 6,
+                children:
+                    availableTimes.map((time) {
+                      return ChoiceChip(
+                        label: Text(
+                          time,
+                          style: TextStyle(
+                            color:
+                                selectedTime == time
+                                    ? Colors.white
+                                    : Colors.black,
+                          ),
+                        ),
+                        selected: selectedTime == time,
+                        selectedColor: Color(0xFF4BB8EA),
+                        checkmarkColor: Colors.white,
+                        // backgroundColor: Colors.indigo.shade50,
+                        onSelected: (selected) {
+                          setState(() {
+                            selectedTime = selected ? time : null;
+                          });
+                        },
+                      );
+                    }).toList(),
+              ),
+              SizedBox(height: 30),
+              // 예약 확인 버튼
+              Center(
+                child: ElevatedButton(
+                  onPressed:
+                      selectedTime == null
+                          ? null
+                          : _showReservationConfirmDialog,
+                  child: Text(
+                    'reservation.confirm'.tr(),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

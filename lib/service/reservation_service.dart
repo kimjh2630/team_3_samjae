@@ -41,7 +41,7 @@ class ReservationService {
     return _reservations.where((r) => r.userId == userId).toList();
   }
 
-  static const String baseUrl = 'https://a562-183-109-28-98.ngrok-free.app'; // 실제 서버 주소로 변경
+  static const String baseUrl = 'https://c270-121-172-220-55.ngrok-free.app'; // 실제 서버 주소로 변경
 
   static Future<int?> createReservation({
     required int userId,

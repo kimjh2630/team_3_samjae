@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 //소셜 로그인 관련 패키지
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:project/service/database_service.dart';
 import 'package:project/widgets/language_dialog.dart';
@@ -36,7 +37,7 @@ class _LoginWidgetState extends State<LoginWidget> {
   String? profileImage; //프로필 이미지 URL (구글 전용)
   User? _user; // Firebase User 객체
 
-  //DB 저장을 위한 서비스 인스턴스
+    //DB 저장을 위한 서비스 인스턴스
   final DatabaseService _db = DatabaseService();
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -134,6 +135,20 @@ class _LoginWidgetState extends State<LoginWidget> {
       UserCredential userCredential = await _auth.signInWithCredential(credential);
       User? user = userCredential.user;
 
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        throw Exception('위치 권한이 필요합니다. 설정에서 권한을 허용해주세요.');
+      }
+      Position pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      // AppState에 위치 저장
+      Provider.of<AppState>(context, listen: false).position = pos;
+      print('현재 위치: ${pos.latitude}, ${pos.longitude}');
+
       if (user != null) {
         try {
           // DB에 사용자 정보 저장
@@ -213,6 +228,55 @@ class _LoginWidgetState extends State<LoginWidget> {
       _user = null;
       profileImage = null;
     });
+  }
+
+  /// 구글 회원탈퇴 함수
+  Future<void> _deleteAccount() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('로그인된 사용자가 없습니다.')),
+      );
+      return;
+    }
+
+    final email = user.email!;
+    final platform = 'google';
+
+    try {
+      // 1) DB에서 레코드 삭제
+      final removed = await DatabaseService().deleteUser(
+        email: email,
+        loginPlatform: platform,
+      );
+      if (!removed) throw Exception('DB 삭제 건이 없습니다.');
+
+      // 2) Firebase Auth 계정 삭제
+      await user.delete();
+
+      // 3) 구글 세션 종료
+      await GoogleSignIn().signOut();
+
+      // 4) 앱 상태 초기화
+      Provider.of<AppState>(context, listen: false).setLoggedIn(false);
+      Provider.of<AppState>(context, listen: false).nickname = null;
+
+      // 5) 로그인 화면으로 이동
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginWidget()),
+            (_) => false,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('회원탈퇴가 완료되었습니다.')),
+      );
+    } catch (e) {
+      print('회원탈퇴 실패: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('회원탈퇴에 실패했습니다: $e')),
+      );
+    }
   }
 
   //로컬 로그인 버튼 클릭 시 호출되는 함수
@@ -377,7 +441,7 @@ class _LoginWidgetState extends State<LoginWidget> {
                 onTap: () async {
                   // 로그인 정보 완전 초기화
                   await AuthService.logout();
-                  await AuthService.saveUserInfo('', '');
+                  await AuthService.saveUserInfo('email', 'google');
                   await AuthService.saveNickname(null);
                   if (mounted) {
                     Provider.of<AppState>(context, listen: false).nickname = "nonMember".tr();

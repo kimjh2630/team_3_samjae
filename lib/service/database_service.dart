@@ -3,161 +3,130 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 class DatabaseService {
-  //싱글톤 패턴 구현을 위한 인스턴스 변수
+  // 싱글톤 인스턴스
   static final DatabaseService _instance = DatabaseService._internal();
-  //PostgreSQL 연결 객체
-  late final PostgreSQLConnection _connection;
-  //연결 상태 플래그
-  bool _isConnected = false;
-
-  //팩토리 생성자 : 항상 같은 인스턴스 반환
-  factory DatabaseService() {
-    return _instance;
-  }
-
-  //내부 생성자 (싱글톤용)
+  factory DatabaseService() => _instance;
   DatabaseService._internal();
 
-  //비밀번호 해시 함수
+  // PostgreSQL 연결 객체
+  PostgreSQLConnection? _connection;
+
+  /// 비밀번호 해시 (로컬 이메일 가입용)
   String _hashPassword(String password) {
-    final bytes = utf8.encode(password); // 비밀번호를 바이트로 인코딩
-    final hash = sha256.convert(bytes); // SHA-256 해시 생성
-    return hash.toString();
+    final bytes = utf8.encode(password);
+    return sha256.convert(bytes).toString();
   }
 
-  //DB 연결 함수
+  /// DB 연결 (한 번만 열고 재사용)
   Future<void> connect() async {
-    //이미 연결되어 있지 않은 경우에만 연결 시도
-    if (!_isConnected) {
-      try {
-        _connection = PostgreSQLConnection(
-          //DB 호스트 주소
-          'database-1.ct8wqsmwwlb2.ap-northeast-2.rds.amazonaws.com',
-          5432,                     //포트번호
-          'postgres',               //DB 이름
-          username: 'postgres',     //DB 접속 아이디
-          password: 'admin1234',    //DB 접속 비밀번호
-          useSSL: true,             //SSL 사용 여부
-        );
+    if (_connection == null || _connection!.isClosed) {
+      _connection = PostgreSQLConnection(
+        'database-1.ct8wqsmwwlb2.ap-northeast-2.rds.amazonaws.com',
+        5432,
+        'postgres',
+        username: 'postgres',
+        password: 'admin1234',
+        useSSL: true,
+      );
+      await _connection!.open();
+      print('데이터베이스 연결 오픈 (isClosed=${_connection!.isClosed})');
 
-        await _connection.open();   //DB 연결 오픈
-        _isConnected = true;        //연결 상태 플래그 갱신
-        print('데이터베이스 연결 성공');
+      // 필요한 테이블 생성
+      await _connection!.execute('''
+      CREATE TABLE IF NOT EXISTS loginaccount (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) NOT NULL,
+        nickname VARCHAR(255) NOT NULL,
+        platform VARCHAR(50) NOT NULL,
+        profile_image TEXT,
+        firebase_uid VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_loginaccount_email_platform
+        ON loginaccount(email, platform);
 
-        //이메일 회원가입용 테이블 생성
-        await _connection.execute('''
-  CREATE TABLE IF NOT EXISTS loginaccount (
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(255) NOT NULL,
-    nickname VARCHAR(255) NOT NULL,
-    platform VARCHAR(50) NOT NULL,
-    profile_image TEXT,
-    firebase_uid VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_loginaccount_email_platform
-    ON loginaccount(email, platform);
-''');
-      } catch (e) {
-        print('데이터베이스 연결 실패: $e');
-        rethrow;                    //에러를 상위 호출자에게 전달
-      }
+      CREATE TABLE IF NOT EXISTS email_users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        nickname VARCHAR(255) NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      ''');
+      print('테이블(loginaccount, email_users) 준비 완료');
     }
   }
 
-  // 이메일 회원가입 함수
+  /// DB 연결 종료
+  Future<void> disconnect() async {
+    if (_connection != null && !_connection!.isClosed) {
+      await _connection!.close();
+      print('데이터베이스 연결 종료');
+    }
+  }
+
+  // ------------------------------------------------------------
+  // 로컬 이메일/비밀번호 인증 관련
+  // ------------------------------------------------------------
+
+  /// 로컬 계정 회원가입(email_users)
   Future<bool> registerWithEmail({
     required String email,
     required String password,
     required String nickname,
   }) async {
-    try {
-      if (!_isConnected) {
-        await connect();
-      }
+    await connect();
+    if (nickname.trim().isEmpty) return false;
 
-      if (nickname.trim().isEmpty) {
-        print('닉네임이 비어 있습니다. 유효한 닉네임을 입력하세요.');
-        return false;
-      }
-
-      // 이메일 중복 체크
-      final existingUser = await _connection.query(
-        'SELECT * FROM email_users WHERE email = @email',
-        substitutionValues: {'email': email},
-      );
-
-      if (existingUser.isNotEmpty) {
-        print('이미 존재하는 이메일입니다.');
-        return false;
-      }
-
-      // 비밀번호 해시화 및 사용자 정보 저장
-      final passwordHash = _hashPassword(password);
-      await _connection.execute('''
-        INSERT INTO email_users (nickname, email, password_hash)
-        VALUES (@nickname, @email, @passwordHash)
-      ''', substitutionValues: {
-        'nickname': nickname,
-        'email': email,
-        'passwordHash': passwordHash,
-      });
-
-      print('로컬 계정 회원가입 성공');
-      return true;
-    } catch (e) {
-      print('로컬 계정 회원가입 실패 : $e');
+    final exists = await _connection!.query(
+      'SELECT 1 FROM email_users WHERE email = @email',
+      substitutionValues: {'email': email},
+    );
+    if (exists.isNotEmpty) {
+      print('이미 존재하는 이메일입니다.');
       return false;
     }
+
+    final hash = _hashPassword(password);
+    await _connection!.execute('''
+      INSERT INTO email_users (email, nickname, password_hash)
+      VALUES (@email, @nickname, @hash)
+    ''', substitutionValues: {
+      'email': email,
+      'nickname': nickname,
+      'hash': hash,
+    });
+    return true;
   }
 
-  // 이메일 로그인 함수
+  /// 로컬 계정 로그인(email_users)
   Future<Map<String, dynamic>?> loginWithEmail({
     required String email,
     required String password,
   }) async {
-    try {
-      if (!_isConnected) {
-        await connect();
-      }
-
-      final passwordHash = _hashPassword(password);
-      final results = await _connection.query(
-        'SELECT * FROM email_users WHERE email = @email AND password_hash = @passwordHash',
-        substitutionValues: {
-          'email': email,
-          'passwordHash': passwordHash,
-        },
-      );
-
-      if (results.isNotEmpty) {
-        final nickname = results[0][1]; // 닉네임 컬럼
-        print('닉네임 : $nickname');
-        return {
-          'nickname': results[0][1],
-          'email': results[0][2],
-          'password': passwordHash
-        };
-      }
-      print('이메일 또는 비밀번호가 일치하지 않습니다.');
-      return null;
-    } catch (e) {
-      print('로그인 실패 : $e');
-      return null;
-    }
+    await connect();
+    final hash = _hashPassword(password);
+    final results = await _connection!.query(
+      'SELECT email, nickname FROM email_users WHERE email = @email AND password_hash = @hash',
+      substitutionValues: {
+        'email': email,
+        'hash': hash,
+      },
+    );
+    if (results.isEmpty) return null;
+    return {
+      'email': results[0][0],
+      'nickname': results[0][1],
+    };
   }
 
-  //DB 연결 종료 함수
-  Future<void> disconnect() async {
-    if (_isConnected) {
-      await _connection.close();    //DB 연결 종료
-      _isConnected = false;         //연결 상태 플래그 갱신
-      print('데이터베이스 연결 종료');
-    }
-  }
+  // ------------------------------------------------------------
+  // 소셜 로그인 관련
+  // ------------------------------------------------------------
 
-  //사용자 정보를 DB에 저장하는 함수(없으면 생성, 있으면 업데이트)
+  /// (소셜 로그인) 로그인·신규 가입 시 loginaccount 테이블에 저장 또는 업데이트
   Future<void> saveUserInfo({
     required String email,
     required String nickname,
@@ -165,20 +134,20 @@ class DatabaseService {
     required String profileImage,
     String? firebaseUid,
   }) async {
-    if (!_isConnected) await connect();
+    await connect();
 
-    await _connection.execute('''
-    INSERT INTO loginaccount
-      (email, nickname, platform, profile_image, firebase_uid)
-    VALUES
-      (@email, @nickname, @platform, @profileImage, @firebaseUid)
-    ON CONFLICT (email, platform)
-    DO UPDATE SET
-      nickname       = EXCLUDED.nickname,
-      profile_image  = EXCLUDED.profile_image,
-      firebase_uid   = EXCLUDED.firebase_uid,
-      updated_at     = CURRENT_TIMESTAMP;
-  ''', substitutionValues: {
+    await _connection!.execute('''
+      INSERT INTO loginaccount
+        (email, nickname, platform, profile_image, firebase_uid)
+      VALUES
+        (@email, @nickname, @platform, @profileImage, @firebaseUid)
+      ON CONFLICT (email, platform)
+      DO UPDATE SET
+        nickname      = EXCLUDED.nickname,
+        profile_image = EXCLUDED.profile_image,
+        firebase_uid  = EXCLUDED.firebase_uid,
+        updated_at    = CURRENT_TIMESTAMP;
+    ''', substitutionValues: {
       'email': email,
       'nickname': nickname,
       'platform': loginPlatform,
@@ -189,197 +158,27 @@ class DatabaseService {
     print('loginaccount 저장/업데이트 성공');
   }
 
+// ------------------------------------------------------------
+// 회원 탈퇴 로직
+// ------------------------------------------------------------
 
-// 3) getUserInfo() → loginaccount 조회
-  Future<Map<String, dynamic>?> getUserInfo({
-    required String email,
-    required String loginPlatform,
-  }) async {
-    if (!_isConnected) await connect();
-
-    final results = await _connection.query(
-      'SELECT * FROM loginaccount WHERE email = @email AND platform = @platform',
-      substitutionValues: {
-        'email': email,
-        'platform': loginPlatform,
-      },
-    );
-    if (results.isEmpty) return null;
-
-    final row = results.first;
-    return {
-      'nickname': row[2],
-      'email': row[1],
-      'loginPlatform': row[3],
-      'profileImage': row[4],
-      'firebaseUid': row[5],
-    };
-  }
-
-
-  // 이메일 변경 함수
-  Future<bool> updateEmail({
-    required String oldEmail,
-    required String newEmail,
-    required String loginPlatform,
-  }) async {
-    try {
-      if (!_isConnected) {
-        await connect();
-      }
-
-      // 새 이메일 중복 체크
-      final existingUser = await _connection.query(
-        'SELECT * FROM loginaccount WHERE email = @email AND platform = @platform',
-        substitutionValues: {'email': newEmail, 'platform': loginPlatform},
-      );
-
-      if (existingUser.isNotEmpty) {
-        print('이미 존재하는 이메일입니다.');
-        return false;
-      }
-
-      // 이메일 업데이트
-      await _connection.execute('''
-        UPDATE loginaccount 
-        SET email = @newEmail 
-        WHERE email = @oldEmail AND platform = @platform
-      ''', substitutionValues: {
-        'newEmail': newEmail,
-        'oldEmail': oldEmail,
-        'platform': loginPlatform,
-      });
-
-      // email_users 테이블도 업데이트 (로컬 계정인 경우)
-      if (loginPlatform == 'local') {
-        await _connection.execute('''
-          UPDATE loginaccount 
-          SET email = @newEmail 
-          WHERE email = @oldEmail
-        ''', substitutionValues: {
-          'newEmail': newEmail,
-          'oldEmail': oldEmail,
-        });
-      }
-
-      print('이메일 변경 성공');
-      return true;
-    } catch (e) {
-      print('이메일 변경 실패: $e');
-      return false;
-    }
-  }
-
-  // 비밀번호 변경 함수 (로컬 계정만)
-  Future<bool> updatePassword({
-    required String email,
-    required String newPassword,
-  }) async {
-    try {
-      if (!_isConnected) {
-        await connect();
-      }
-
-      final passwordHash = _hashPassword(newPassword);
-      
-      await _connection.execute('''
-        UPDATE loginaccount 
-        SET password_hash = @passwordHash 
-        WHERE email = @email
-      ''', substitutionValues: {
-        'passwordHash': passwordHash,
-        'email': email,
-      });
-
-      print('비밀번호 변경 성공');
-      return true;
-    } catch (e) {
-      print('비밀번호 변경 실패: $e');
-      return false;
-    }
-  }
-
-  // 닉네임 변경 함수
-  Future<bool> updateNickname({
-    required String email,
-    required String newNickname,
-    required String loginPlatform,
-  }) async {
-    try {
-      if (!_isConnected) {
-        await connect();
-      }
-
-      if (newNickname.trim().isEmpty) {
-        print('닉네임이 비어 있습니다.');
-        return false;
-      }
-
-      await _connection.execute('''
-        UPDATE users 
-        SET nickname = @newNickname 
-        WHERE email = @email AND platform = @platform
-      ''', substitutionValues: {
-        'newNickname': newNickname,
-        'email': email,
-        'platform': loginPlatform,
-      });
-
-      // email_users 테이블도 업데이트 (로컬 계정인 경우)
-      if (loginPlatform == 'local') {
-        await _connection.execute('''
-          UPDATE loginaccount 
-          SET nickname = @newNickname 
-          WHERE email = @email
-        ''', substitutionValues: {
-          'newNickname': newNickname,
-          'email': email,
-        });
-      }
-
-      print('닉네임 변경 성공');
-      return true;
-    } catch (e) {
-      print('닉네임 변경 실패: $e');
-      return false;
-    }
-  }
-
-  // 회원탈퇴 함수
+  /// database_service.dart
   Future<bool> deleteUser({
     required String email,
     required String loginPlatform,
   }) async {
-    try {
-      if (!_isConnected) {
-        await connect();
-      }
-
-      // users 테이블에서 삭제
-      await _connection.execute('''
-        DELETE FROM loginaccount 
-        WHERE email = @email AND platform = @platform
-      ''', substitutionValues: {
-        'email': email,
-        'platform': loginPlatform,
-      });
-
-      // email_users 테이블에서도 삭제 (로컬 계정인 경우)
-      if (loginPlatform == 'local') {
-        await _connection.execute('''
-          DELETE FROM loginaccount 
-          WHERE email = @email
-        ''', substitutionValues: {
-          'email': email,
-        });
-      }
-
-      print('회원탈퇴 성공');
-      return true;
-    } catch (e) {
-      print('회원탈퇴 실패: $e');
-      return false;
+    await connect();
+    final deleted1 = await _connection!.execute(
+      'DELETE FROM loginaccount WHERE email = @email AND platform = @platform',
+      substitutionValues: {'email': email, 'platform': loginPlatform},
+    );
+    int deleted2 = 0;
+    if (loginPlatform == 'local') {
+      deleted2 = await _connection!.execute(
+        'DELETE FROM email_users WHERE email = @email',
+        substitutionValues: {'email': email},
+      );
     }
+    return (deleted1 + deleted2) > 0;
   }
-  
 }
