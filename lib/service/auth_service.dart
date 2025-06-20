@@ -10,9 +10,11 @@ import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
-  static const String baseUrl = 'https://c270-121-172-220-55.ngrok-free.app'; // API 서버 주소
+  static const String baseUrl = 'https://f64e-121-172-220-55.ngrok-free.app'; // API 서버 주소
   static const String jwtKey = 'jwt_token';
   static const String refreshTokenKey = 'refresh_token';
   static const String userEmailKey = 'user_email';
@@ -163,23 +165,21 @@ class AuthService {
   static Future<http.Response> deleteAccount(String email, String platform) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-
+      // 1. 구글 재로그인(팝업)
       final googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) throw Exception('구글 재로그인이 필요합니다.');
-      final googleAuth = await googleUser.authentication;
+      final googleAuth = await googleUser?.authentication;
 
-      // 2) Credential 생성 및 재인증
+      // 2. 재인증용 credential 생성
       final credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
-        accessToken: googleAuth.accessToken,
+        accessToken: googleAuth?.accessToken,
+        idToken: googleAuth?.idToken,
       );
+
+      // 3. 재인증
       await user.reauthenticateWithCredential(credential);
 
-      // 3) Firebase 계정 삭제
+      // 4. 재인증 후 계정 삭제
       await user.delete();
-
-      // 4) 구글 세션 종료
-      await GoogleSignIn().signOut();
     }
 
     // 5) 백엔드 API 호출로 DB 레코드 삭제

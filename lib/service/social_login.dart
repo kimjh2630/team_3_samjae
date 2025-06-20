@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+
 //소셜 로그인 관련 패키지
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -19,9 +20,10 @@ import '../state/app_state.dart';
 import 'database_service.dart';
 
 //로그인 플랫폼 구분용 enum
-enum LoginPlatform {google, local,}
+enum LoginPlatform { google, local }
+
 //로그인 위젯(상태 관리가 필요하므로 StatefulWidget사용)
-class LoginWidget extends StatefulWidget{
+class LoginWidget extends StatefulWidget {
   const LoginWidget({super.key});
 
   @override
@@ -37,12 +39,16 @@ class _LoginWidgetState extends State<LoginWidget> {
   String? profileImage; //프로필 이미지 URL (구글 전용)
   User? _user; // Firebase User 객체
 
-    //DB 저장을 위한 서비스 인스턴스
+  //DB 저장을 위한 서비스 인스턴스
   final DatabaseService _db = DatabaseService();
 
+  // FirebaseAuth, GoogleSignIn 객체는 한 번만 선언
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email'],
-      serverClientId: '399398963854-dh1b6tgh5sol88q87jcg80edo4n7nomk.apps.googleusercontent.com',);
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email'],
+    serverClientId:
+        '399398963854-dh1b6tgh5sol88q87jcg80edo4n7nomk.apps.googleusercontent.com',
+  );
 
   @override
   void initState() {
@@ -56,9 +62,9 @@ class _LoginWidgetState extends State<LoginWidget> {
     } catch (e) {
       print('서비스 초기화 실패: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('서비스 초기화에 실패했습니다: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('서비스 초기화에 실패했습니다: $e')));
       }
     }
   }
@@ -73,12 +79,12 @@ class _LoginWidgetState extends State<LoginWidget> {
     super.dispose();
   }
 
-  Future <void> _updateLoginState({
+  Future<void> _updateLoginState({
     required bool loggedIn,
     String? platform,
     String? nick,
     String? mail,
-    String? image
+    String? image,
   }) async {
     setState(() {
       isLoggedIn = loggedIn;
@@ -91,8 +97,11 @@ class _LoginWidgetState extends State<LoginWidget> {
   }
 
   //로컬 로그인 성공 처리
-  Future<void> loginWithLocal(String email, String nickname, String password) async {
-
+  Future<void> loginWithLocal(
+    String email,
+    String nickname,
+    String password,
+  ) async {
     Provider.of<AppState>(context, listen: false).setLoggedIn(true);
     Provider.of<AppState>(context, listen: false).nickname = nickname;
 
@@ -106,105 +115,171 @@ class _LoginWidgetState extends State<LoginWidget> {
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => nav_MainPage(initialIndex: 0),
-        ),
+        MaterialPageRoute(builder: (context) => nav_MainPage(initialIndex: 0)),
       );
     }
   }
 
   //Google 로그인 함수
+
   Future<void> loginWithGoogle() async {
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      // 1) GoogleSignIn 흐름
+      final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return; // 로그인 취소
-
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-
-      if (googleAuth.idToken == null) {
-        throw Exception("Google ID Token이 없습니다. Firebase 인증 실패");
+      final googleAuth = await googleUser.authentication;
+      if (googleAuth.accessToken == null) {
+        throw Exception('Google accessToken이 없습니다.');
       }
 
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
+      // 2) Firebase 인증 (optional)
+      final cred = GoogleAuthProvider.credential(
         idToken: googleAuth.idToken,
+        accessToken: googleAuth.accessToken,
+      );
+      final userCred = await _auth.signInWithCredential(cred);
+      final user = userCred.user!;
+
+      // 3) **FastAPI 소셜 로그인 API** 호출
+      final resp = await AuthService.socialLogin(
+        'google',
+        googleAuth.idToken!, // 소셜 로그인용 토큰
+      );
+      if (resp.statusCode != 200) {
+        throw Exception('API 소셜 로그인 실패: ${resp.statusCode}');
+      }
+      final body = jsonDecode(resp.body);
+      final accessToken = body['access_token'] as String;
+      final refreshToken = body['refresh_token'] as String;
+      // Python FastAPI 가 db에 로그인/신규가입 처리:contentReference[oaicite:0]{index=0}:contentReference[oaicite:1]{index=1}
+
+      // 4) 발급된 JWT 토큰 저장
+      await AuthService.saveToken(accessToken);
+      await AuthService.saveRefreshToken(refreshToken);
+
+      // 5) SharedPreferences 에 email/platform 저장
+      await AuthService.saveUserInfo(user.email!, 'google');
+
+      // 6) (선택) 앱 내 프로필 테이블에도 저장/업데이트
+      await DatabaseService().saveUserInfo(
+        email: user.email!,
+        nickname: user.displayName ?? '익명',
+        loginPlatform: 'google',
+        profileImage: user.photoURL ?? '',
+        firebaseUid: user.uid,
       );
 
-      // Firebase에 로그인
-      UserCredential userCredential = await _auth.signInWithCredential(credential);
-      User? user = userCredential.user;
+      // 7) AppState 갱신
+      Provider.of<AppState>(context, listen: false).setLoggedIn(true);
+      Provider.of<AppState>(context, listen: false).nickname = user.displayName;
 
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        throw Exception('위치 권한이 필요합니다. 설정에서 권한을 허용해주세요.');
-      }
-      Position pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+      // 8) 홈 화면으로 이동
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => nav_MainPage(initialIndex: 0)),
+        (_) => false,
       );
-      // AppState에 위치 저장
-      Provider.of<AppState>(context, listen: false).position = pos;
-      print('현재 위치: ${pos.latitude}, ${pos.longitude}');
-
-      if (user != null) {
-        try {
-          // DB에 사용자 정보 저장
-          await _db.saveUserInfo(
-            email:           user.email      ?? '',
-            nickname:        user.displayName?? '익명',
-            loginPlatform:   'google',
-            firebaseUid:     user.uid,
-            profileImage: user.photoURL    ?? '',
-          );
-
-          await _updateLoginState(
-            loggedIn: true,
-            platform: 'google',
-            nick: user.displayName,
-            mail: user.email,
-            image: user.photoURL,
-          );
-
-          print('Google 계정 로그인 성공 (Firebase)');
-          print('이름 : ${user.displayName}');
-          print('이메일 : ${user.email}');
-
-          Provider.of<AppState>(context, listen: false).setLoggedIn(true);
-          Provider.of<AppState>(context, listen: false).nickname = user.displayName;
-
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (_) => nav_MainPage(initialIndex: 0),),
-                (Route<dynamic> route) => false,
-          );
-        } catch (dbError) {
-          print('DB 저장 실패: $dbError');
-          // DB 저장 실패해도 로그인은 유지
-          await _updateLoginState(
-            loggedIn: true,
-            platform: 'google',
-            nick: user.displayName,
-            mail: user.email,
-            image: user.photoURL,
-          );
-        }
-      }
     } catch (e) {
-      print('Google 로그인 실패: $e');
+      print('Google 로그인 오류: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Google 로그인에 실패했습니다: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('로그인에 실패했습니다: $e')));
       }
     }
   }
 
+  // Future<void> loginWithGoogle() async {
+  //   try {
+  //     final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+  //     if (googleUser == null) return; // 로그인 취소
+  //
+  //     final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+  //
+  //
+  //     if (googleAuth.idToken == null) {
+  //       throw Exception("Google ID Token이 없습니다. Firebase 인증 실패");
+  //     }
+  //
+  //     final credential = GoogleAuthProvider.credential(
+  //       accessToken: googleAuth.accessToken,
+  //       idToken: googleAuth.idToken,
+  //     );
+  //
+  //     // Firebase에 로그인
+  //     UserCredential userCredential = await _auth.signInWithCredential(credential);
+  //     User? user = userCredential.user;
+  //
+  //     LocationPermission permission = await Geolocator.checkPermission();
+  //     if (permission == LocationPermission.denied) {
+  //       permission = await Geolocator.requestPermission();
+  //     }
+  //     if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+  //       throw Exception('위치 권한이 필요합니다. 설정에서 권한을 허용해주세요.');
+  //     }
+  //     Position pos = await Geolocator.getCurrentPosition(
+  //       desiredAccuracy: LocationAccuracy.high,
+  //     );
+  //     // AppState에 위치 저장
+  //     Provider.of<AppState>(context, listen: false).position = pos;
+  //     print('현재 위치: ${pos.latitude}, ${pos.longitude}');
+  //
+  //     if (user != null) {
+  //       try {
+  //         // DB에 사용자 정보 저장
+  //         await _db.saveUserInfo(
+  //           email:           user.email      ?? '',
+  //           nickname:        user.displayName?? '익명',
+  //           loginPlatform:   'google',
+  //           firebaseUid:     user.uid,
+  //           profileImage: user.photoURL    ?? '',
+  //         );
+  //
+  //         await _updateLoginState(
+  //           loggedIn: true,
+  //           platform: 'google',
+  //           nick: user.displayName,
+  //           mail: user.email,
+  //           image: user.photoURL,
+  //         );
+  //
+  //         print('Google 계정 로그인 성공 (Firebase)');
+  //         print('이름 : ${user.displayName}');
+  //         print('이메일 : ${user.email}');
+  //
+  //         Provider.of<AppState>(context, listen: false).setLoggedIn(true);
+  //         Provider.of<AppState>(context, listen: false).nickname = user.displayName;
+  //
+  //         Navigator.pushAndRemoveUntil(
+  //           context,
+  //           MaterialPageRoute(
+  //             builder: (_) => nav_MainPage(initialIndex: 0),),
+  //               (Route<dynamic> route) => false,
+  //         );
+  //       } catch (dbError) {
+  //         print('DB 저장 실패: $dbError');
+  //         // DB 저장 실패해도 로그인은 유지
+  //         await _updateLoginState(
+  //           loggedIn: true,
+  //           platform: 'google',
+  //           nick: user.displayName,
+  //           mail: user.email,
+  //           image: user.photoURL,
+  //         );
+  //       }
+  //     }
+  //   } catch (e) {
+  //     print('Google 로그인 실패: $e');
+  //     if (mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text('Google 로그인에 실패했습니다: $e')),
+  //       );
+  //     }
+  //   }
+  // }
+
   //로그아웃 함수(플랫폼별 분기)
-  Future <void> logout() async {
+  Future<void> logout() async {
     try {
       if (loginPlatform == 'google') {
         await _googleSignIn.signOut(); //구글 로그아웃
@@ -234,9 +309,9 @@ class _LoginWidgetState extends State<LoginWidget> {
   Future<void> _deleteAccount() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('로그인된 사용자가 없습니다.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('로그인된 사용자가 없습니다.')));
       return;
     }
 
@@ -265,17 +340,17 @@ class _LoginWidgetState extends State<LoginWidget> {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const LoginWidget()),
-            (_) => false,
+        (_) => false,
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('회원탈퇴가 완료되었습니다.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('회원탈퇴가 완료되었습니다.')));
     } catch (e) {
       print('회원탈퇴 실패: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('회원탈퇴에 실패했습니다: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('회원탈퇴에 실패했습니다: $e')));
     }
   }
 
@@ -283,17 +358,11 @@ class _LoginWidgetState extends State<LoginWidget> {
   void _showEmailAuthDialog() {
     showDialog(
       context: context,
-      builder: (context) =>
-          Dialog(
+      builder:
+          (context) => Dialog(
             child: Container(
-              width: MediaQuery
-                  .of(context)
-                  .size
-                  .width * 0.9,
-              height: MediaQuery
-                  .of(context)
-                  .size
-                  .height * 0.8,
+              width: MediaQuery.of(context).size.width * 0.9,
+              height: MediaQuery.of(context).size.height * 0.8,
               padding: const EdgeInsets.all(16),
               child: Scaffold(
                 body: SafeArea(
@@ -321,10 +390,12 @@ class _LoginWidgetState extends State<LoginWidget> {
                         child: SingleChildScrollView(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0),
+                              horizontal: 16.0,
+                            ),
                             child: EmailAuthWidget(
-                              onLoginSuccess: (email, nick, pw) =>
-                                  loginWithLocal(email, nick, pw),
+                              onLoginSuccess:
+                                  (email, nick, pw) =>
+                                      loginWithLocal(email, nick, pw),
                             ),
                           ),
                         ),
@@ -342,14 +413,8 @@ class _LoginWidgetState extends State<LoginWidget> {
   final TextEditingController _nickController = TextEditingController();
   final TextEditingController _pwController = TextEditingController();
 
-
-
-
   void _showLanguageDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => const LanguageDialog(),
-    );
+    showDialog(context: context, builder: (context) => const LanguageDialog());
   }
 
   @override
@@ -390,10 +455,11 @@ class _LoginWidgetState extends State<LoginWidget> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          EmailAuthWidget(
-                              onLoginSuccess: (email, nick, pw) =>
-                                  loginWithLocal(email, nick, pw)
+                      builder:
+                          (_) => EmailAuthWidget(
+                            onLoginSuccess:
+                                (email, nick, pw) =>
+                                    loginWithLocal(email, nick, pw),
                           ),
                     ),
                   );
@@ -421,7 +487,10 @@ class _LoginWidgetState extends State<LoginWidget> {
                   Expanded(child: Divider(color: Colors.grey.shade300)),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Text("or".tr(), style: TextStyle(color: Colors.grey)),
+                    child: Text(
+                      "or".tr(),
+                      style: TextStyle(color: Colors.grey),
+                    ),
                   ),
                   Expanded(child: Divider(color: Colors.grey.shade300)),
                 ],
@@ -432,7 +501,10 @@ class _LoginWidgetState extends State<LoginWidget> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _socialBtn('assets/images/google_login_m.png', loginWithGoogle),
+                  _socialBtn(
+                    'assets/images/google_login_m.png',
+                    loginWithGoogle,
+                  ),
                 ],
               ),
               SizedBox(height: 16),
@@ -444,7 +516,8 @@ class _LoginWidgetState extends State<LoginWidget> {
                   await AuthService.saveUserInfo('email', 'google');
                   await AuthService.saveNickname(null);
                   if (mounted) {
-                    Provider.of<AppState>(context, listen: false).nickname = "nonMember".tr();
+                    Provider.of<AppState>(context, listen: false).nickname =
+                        "nonMember".tr();
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(builder: (context) => nav_MainPage()),
@@ -465,10 +538,7 @@ class _LoginWidgetState extends State<LoginWidget> {
                       SizedBox(width: 10),
                       Text(
                         "startAsNonMember".tr(),
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -481,7 +551,7 @@ class _LoginWidgetState extends State<LoginWidget> {
     );
   }
 
-// 소셜 버튼 위젯 (Google만 남김)
+  // 소셜 버튼 위젯 (Google만 남김)
   Widget _socialBtn(String assetPath, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,

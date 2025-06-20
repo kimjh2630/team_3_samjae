@@ -1,11 +1,14 @@
 import 'package:postgres/postgres.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:project/service/auth_service.dart';
 
 class DatabaseService {
   // 싱글톤 인스턴스
   static final DatabaseService _instance = DatabaseService._internal();
+
   factory DatabaseService() => _instance;
+
   DatabaseService._internal();
 
   // PostgreSQL 연결 객체
@@ -90,14 +93,13 @@ class DatabaseService {
     }
 
     final hash = _hashPassword(password);
-    await _connection!.execute('''
+    await _connection!.execute(
+      '''
       INSERT INTO email_users (email, nickname, password_hash)
       VALUES (@email, @nickname, @hash)
-    ''', substitutionValues: {
-      'email': email,
-      'nickname': nickname,
-      'hash': hash,
-    });
+    ''',
+      substitutionValues: {'email': email, 'nickname': nickname, 'hash': hash},
+    );
     return true;
   }
 
@@ -110,16 +112,10 @@ class DatabaseService {
     final hash = _hashPassword(password);
     final results = await _connection!.query(
       'SELECT email, nickname FROM email_users WHERE email = @email AND password_hash = @hash',
-      substitutionValues: {
-        'email': email,
-        'hash': hash,
-      },
+      substitutionValues: {'email': email, 'hash': hash},
     );
     if (results.isEmpty) return null;
-    return {
-      'email': results[0][0],
-      'nickname': results[0][1],
-    };
+    return {'email': results[0][0], 'nickname': results[0][1]};
   }
 
   // ------------------------------------------------------------
@@ -136,7 +132,8 @@ class DatabaseService {
   }) async {
     await connect();
 
-    await _connection!.execute('''
+    await _connection!.execute(
+      '''
       INSERT INTO loginaccount
         (email, nickname, platform, profile_image, firebase_uid)
       VALUES
@@ -147,38 +144,36 @@ class DatabaseService {
         profile_image = EXCLUDED.profile_image,
         firebase_uid  = EXCLUDED.firebase_uid,
         updated_at    = CURRENT_TIMESTAMP;
-    ''', substitutionValues: {
-      'email': email,
-      'nickname': nickname,
-      'platform': loginPlatform,
-      'profileImage': profileImage,
-      'firebaseUid': firebaseUid ?? '',
-    });
+    ''',
+      substitutionValues: {
+        'email': email,
+        'nickname': nickname,
+        'platform': loginPlatform,
+        'profileImage': profileImage,
+        'firebaseUid': firebaseUid ?? '',
+      },
+    );
 
     print('loginaccount 저장/업데이트 성공');
   }
 
-// ------------------------------------------------------------
-// 회원 탈퇴 로직
-// ------------------------------------------------------------
+  // ------------------------------------------------------------
+  // 회원 탈퇴 로직
+  // ------------------------------------------------------------
 
-  /// database_service.dart
+  /// 회원탈퇴 : Python API DELETE 호출만 사용
   Future<bool> deleteUser({
     required String email,
     required String loginPlatform,
   }) async {
-    await connect();
-    final deleted1 = await _connection!.execute(
-      'DELETE FROM loginaccount WHERE email = @email AND platform = @platform',
-      substitutionValues: {'email': email, 'platform': loginPlatform},
-    );
-    int deleted2 = 0;
-    if (loginPlatform == 'local') {
-      deleted2 = await _connection!.execute(
-        'DELETE FROM email_users WHERE email = @email',
-        substitutionValues: {'email': email},
-      );
+    // AuthService.deleteAccount가 DELETE /loginaccount/{email}?platform=… 를 호출
+    final res = await AuthService.deleteAccount(email, loginPlatform);
+    if (res.statusCode == 200) {
+      print('API 회원탈퇴 성공 (statusCode=200)');
+      return true;
+    } else {
+      print('API 회원탈퇴 실패 (statusCode=${res.statusCode}): ${res.body}');
+      return false;
     }
-    return (deleted1 + deleted2) > 0;
   }
 }

@@ -325,7 +325,7 @@ class _EmergencyMapPageState extends State<EmergencyMapPage> {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.red,
+                                  color: Colors.black87,
                                 ),
                               ),
                               Text(

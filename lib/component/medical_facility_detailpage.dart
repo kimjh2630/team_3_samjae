@@ -80,24 +80,24 @@ class MedicalFacilityDetailPage extends StatelessWidget {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: Text('login_required'.tr()),
-            content: Text('login_to_reserve'.tr()),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: Text('cancel'.tr()),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  // 로그인 화면으로 이동
-                  Navigator.pushReplacementNamed(context, '/login');
-                },
-                child: Text('login'.tr()),
-              ),
-            ],
+        title: Text('login_required'.tr()),
+        content: Text('login_to_reserve'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: Text('cancel'.tr()),
           ),
+          ElevatedButton(
+            onPressed: () {
+              // 로그인 화면으로 이동
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+            child: Text('login'.tr()),
+          ),
+        ],
+      ),
     );
   }
 
@@ -119,19 +119,10 @@ class MedicalFacilityDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dutyTimes = getDutyTimes();
-    final String calculatedStatus = facility.calculateTodayOpenStatus();
-    // 응급의료기관(24시간 운영)일 경우 무조건 운영중으로 표시
-    final bool isEmergency =
-        (facility.dutyDiv == '응급실' || facility.dutyDivNam == '응급실');
-    final bool isOperating = isEmergency || calculatedStatus.contains('운영중');
-    final String displayStatusText =
-        isEmergency ? 'operating'.tr() : _getTranslatedStatus(calculatedStatus);
-    final Color statusColor =
-        isOperating
-            ? Colors.green
-            : calculatedStatus.contains('운영종료')
-            ? Colors.red
-            : Colors.grey;
+    final String finalStatus = facility.finalOpenStatus;
+    final bool isOperating = finalStatus.contains('운영중');
+    final String displayStatusText = _getTranslatedStatus(finalStatus);
+    final Color statusColor = _getStatusColor(finalStatus);
 
     return Scaffold(
       // backgroundColor: Colors.indigo.shade50,
@@ -188,7 +179,6 @@ class MedicalFacilityDetailPage extends StatelessWidget {
                     ),
                   ),
                   if (fromMainHospitalSearch &&
-                      !isEmergency &&
                       facility.dutyDiv != '약국') // 메인 병원찾기에서만 예약 버튼 표시
                     ElevatedButton.icon(
                       onPressed: () => _navigateToReservationPage(context),
@@ -274,7 +264,7 @@ class MedicalFacilityDetailPage extends StatelessWidget {
                   destLat: double.tryParse(facility.wgs84Lat ?? '') ?? 0.0,
                   destLon: double.tryParse(facility.wgs84Lon ?? '') ?? 0.0,
                   destName:
-                      facility.getCleanDutyName() ?? 'detail.no_name'.tr(),
+                  facility.getCleanDutyName() ?? 'detail.no_name'.tr(),
                   destAddr: facility.dutyAddr,
                   height: 56,
                   buttonText: 'detail.directions'.tr(),
@@ -298,18 +288,18 @@ class MedicalFacilityDetailPage extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 8,
                       children:
-                          facility.dgidIdName!
-                              .split(',')
-                              .map(
-                                (subject) => Chip(
-                                  label: Text(
-                                    _translateSubject(subject.trim()),
-                                    style: TextStyle(color: Colors.black),
-                                  ),
-                                  backgroundColor: Colors.red[50],
-                                ),
-                              )
-                              .toList(),
+                      facility.dgidIdName!
+                          .split(',')
+                          .map(
+                            (subject) => Chip(
+                          label: Text(
+                            _translateSubject(subject.trim()),
+                            style: TextStyle(color: Colors.black),
+                          ),
+                          backgroundColor: Colors.red[50],
+                        ),
+                      )
+                          .toList(),
                     ),
                     SizedBox(height: 24),
                   ],
@@ -337,35 +327,35 @@ class MedicalFacilityDetailPage extends StatelessWidget {
                     verticalInside: BorderSide(color: Colors.grey[200]!),
                   ),
                   children:
-                      dutyTimes.entries.map((e) {
-                        return TableRow(
-                          decoration: BoxDecoration(color: Colors.white),
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Text(
-                                _getTranslatedDay(e.key),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey[800],
-                                ),
-                              ),
+                  dutyTimes.entries.map((e) {
+                    return TableRow(
+                      decoration: BoxDecoration(color: Colors.white),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Text(
+                            _getTranslatedDay(e.key),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[800],
                             ),
-                            Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Text(
-                                (e.value == '24시간 운영')
-                                    ? 'emergency.open_24h'.tr()
-                                    : (e.value ?? 'detail.no_hours'.tr()),
-                                style: TextStyle(
-                                  color: Colors.grey[800],
-                                  height: 1.5,
-                                ),
-                              ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Text(
+                            (e.value == '24시간 운영')
+                                ? 'emergency.open_24h'.tr()
+                                : (e.value ?? 'detail.no_hours'.tr()),
+                            style: TextStyle(
+                              color: Colors.grey[800],
+                              height: 1.5,
                             ),
-                          ],
-                        );
-                      }).toList(),
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
                 ),
               ),
             ],
@@ -424,11 +414,21 @@ class MedicalFacilityDetailPage extends StatelessWidget {
     );
   }
 
-  String _getTranslatedStatus(String status) {
+  String _getTranslatedStatus(String? status) {
+    if (status == null) return 'detail.no_status'.tr();
     if (status.contains('운영중')) return 'operating'.tr();
     if (status.contains('운영종료')) return 'closed'.tr();
-    if (status.contains('운영 시간 정보 없음')) return 'detail.no_hours'.tr();
+    if (status.contains('진료준비')) return 'preparing'.tr();
+    if (status.contains('휴진')) return 'day_off'.tr();
+    if (status.contains('정보 없음')) return 'detail.no_status'.tr();
     return status;
+  }
+
+  Color _getStatusColor(String? status) {
+    if (status == null) return Colors.grey;
+    if (status.contains('운영중')) return Colors.green;
+    if (status.contains('운영종료')) return Colors.red;
+    return Colors.grey;
   }
 
   String _getTranslatedDay(String day) {
