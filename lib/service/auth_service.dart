@@ -8,9 +8,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
-  static const String baseUrl = 'https://900a-121-172-220-55.ngrok-free.app'; // API 서버 주소
+  static const String baseUrl = 'https://f64e-121-172-220-55.ngrok-free.app'; // API 서버 주소
   static const String jwtKey = 'jwt_token';
   static const String refreshTokenKey = 'refresh_token';
   static const String userEmailKey = 'user_email';
@@ -159,6 +163,26 @@ class AuthService {
 
   // 회원 탈퇴 (DELETE)
   static Future<http.Response> deleteAccount(String email, String platform) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      // 1. 구글 재로그인(팝업)
+      final googleUser = await GoogleSignIn().signIn();
+      final googleAuth = await googleUser?.authentication;
+
+      // 2. 재인증용 credential 생성
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth?.accessToken,
+        idToken: googleAuth?.idToken,
+      );
+
+      // 3. 재인증
+      await user.reauthenticateWithCredential(credential);
+
+      // 4. 재인증 후 계정 삭제
+      await user.delete();
+    }
+
+    // 5) 백엔드 API 호출로 DB 레코드 삭제
     return await http.delete(
       Uri.parse('$baseUrl/loginaccount/$email?platform=$platform'),
       headers: {'Content-Type': 'application/json'},

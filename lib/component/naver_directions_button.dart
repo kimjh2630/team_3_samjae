@@ -23,15 +23,15 @@ class NaverDirectionsButton extends StatelessWidget {
     this.buttonText = '길찾기',
   }) : super(key: key);
 
-  bool _isValidCoordinate(double lat, double lon) {
-    return lat.isFinite && lon.isFinite &&
+  bool _isValidCoordinate(double? lat, double? lon) {
+    return lat != null && lon != null &&
         lat >= -90 && lat <= 90 &&
         lon >= -180 && lon <= 180;
   }
 
   Future<bool> _isNaverMapInstalled() async {
     try {
-      final Uri naverMapUri = Uri.parse('nmap://');
+      final Uri naverMapUri = Uri.parse("market://details?id=com.nhn.android.nmap");
       final bool canLaunch = await canLaunchUrl(naverMapUri);
       print('Can launch Naver Map: $canLaunch');
       return canLaunch;
@@ -42,7 +42,7 @@ class NaverDirectionsButton extends StatelessWidget {
   }
 
   Future<void> _launchNaverMapApp(BuildContext context, String? startLat, String? startLon, String? startName) async {
-    // 좌표값 검증
+    // 좌표값 검증: 목적지 좌표는 필수
     if (!_isValidCoordinate(destLat, destLon)) {
       print('Invalid destination coordinates: $destLat, $destLon');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -51,109 +51,45 @@ class NaverDirectionsButton extends StatelessWidget {
       return;
     }
 
-    if (startLat != null && startLon != null) {
-      if (!_isValidCoordinate(double.parse(startLat), double.parse(startLon))) {
-        print('Invalid start coordinates: $startLat, $startLon');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('출발지 좌표가 유효하지 않습니다.')),
-        );
-        return;
-      }
-    }
-
     // 도착지 정보 설정
     final destinationName = destAddr ?? destName;
-    final destNameEncoded = Uri.encodeComponent(destinationName);
-    print('Destination info - Name: $destinationName, Encoded: $destNameEncoded');
 
-    // 네이버 지도 앱 URL 스킴 생성
-    String urlScheme;
-    if (startLat != null && startLon != null && startName != null) {
-      urlScheme = 'nmap://route/car?slat=$startLat&slng=$startLon&sname=$startName&dlat=$destLat&dlng=$destLon&dname=$destNameEncoded&appname=project';
-    } else {
-      urlScheme = 'nmap://route/car?dlat=$destLat&dlng=$destLon&dname=$destNameEncoded&appname=project';
-    }
+    final sLat = startLat ?? '';
+    final sLng = startLon ?? '';
+    final sName = Uri.encodeComponent(startName ?? '현위치');
+    final dName = Uri.encodeComponent(destinationName);
+    final appName = 'com.aidoc.aidoc';
 
-    print('Launching Naver Map with URL: $urlScheme');
+    // 1. nmap:// 스킴 (앱이 설치되어 있을 때 가장 잘 동작)
+    final nmapUrl = 'nmap://route/car?slat=$sLat&slng=$sLng&sname=$sName&dlat=$destLat&dlng=$destLon&dname=$dName&appname=$appName';
+
+    // 2. intent:// 스킴 (앱 미설치 시 플레이스토어 이동 지원)
+    final intentUrl = 'intent://route/car?slat=$sLat&slng=$sLng&sname=$sName&dlat=$destLat&dlng=$destLon&dname=$dName&appname=$appName#Intent;scheme=nmap;package=com.nhn.android.nmap;end;';
+
+    // 3. 웹 플레이스토어 URL (최후의 수단)
+    final playStoreWebUrl = 'https://play.google.com/store/apps/details?id=com.nhn.android.nmap';
 
     try {
-      final Uri uri = Uri.parse(urlScheme);
-      print('[NaverMap] Try to launch URI: $uri');
-      final bool canLaunch = await canLaunchUrl(uri);
-      print('[NaverMap] canLaunchUrl: $canLaunch');
-
-      if (canLaunch) {
-        final bool launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-        print('[NaverMap] launchUrl result: $launched');
-        if (!launched) {
-          print('[NaverMap] launchUrl failed, fallback to PlayStore');
-          final result = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text('naver_map_install_guide'.tr()),
-              content: Text('naver_map_install_guide_confirm'.tr()),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: Text('cancel'.tr()),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: Text('ok'.tr()),
-                ),
-              ],
-            ),
+      // 1단계: nmap URL 스킴으로 실행 시도
+      print('[NaverMap] 1단계: nmap:// 스킴 실행 시도');
+      await launchUrl(Uri.parse(nmapUrl), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      print('[NaverMap] 1단계 실패: $e. 2단계: intent:// 스킴 실행 시도');
+      try {
+        // 2단계: intent 스킴으로 실행 시도
+        await launchUrl(Uri.parse(intentUrl), mode: LaunchMode.externalApplication);
+      } catch (e2) {
+        print('[NaverMap] 2단계 실패: $e2. 3단계: 웹 플레이스토어 실행 시도');
+        try {
+          // 3단계: 웹 플레이스토어로 이동
+          await launchUrl(Uri.parse(playStoreWebUrl), mode: LaunchMode.externalApplication);
+        } catch (e3) {
+          print('[NaverMap] 3단계 실패: $e3');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('네이버 지도 앱/플레이스토어 실행에 모두 실패했습니다.')),
           );
-          print('[NaverMap] Dialog result: $result');
-          if (result == true) {
-            final Uri playStoreUri = Uri.parse('market://details?id=com.nhn.android.nmap');
-            try {
-              await launchUrl(playStoreUri, mode: LaunchMode.externalApplication);
-            } catch (e) {
-              print('[NaverMap] Launch PlayStore URI failed: $e');
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('플레이스토어를 실행할 수 없습니다.')),
-              );
-            }
-          }
-        }
-      } else {
-        print('[NaverMap] canLaunchUrl is false, fallback to PlayStore');
-        final result = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('naver_map_install_guide'.tr()),
-            content: Text('naver_map_install_guide_confirm'.tr()),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text('cancel'.tr()),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text('ok'.tr()),
-              ),
-            ],
-          ),
-        );
-        print('[NaverMap] Dialog result: $result');
-        if (result == true) {
-          final Uri playStoreUri = Uri.parse('market://details?id=com.nhn.android.nmap');
-          try {
-            await launchUrl(playStoreUri, mode: LaunchMode.externalApplication);
-          } catch (e) {
-            print('[NaverMap] Launch PlayStore URI failed: $e');
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('플레이스토어를 실행할 수 없습니다.')),
-            );
-          }
         }
       }
-    } catch (e, st) {
-      print('[NaverMap] Exception: $e\n$st');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('네이버 지도 앱 실행에 실패했습니다.')),
-      );
     }
   }
 

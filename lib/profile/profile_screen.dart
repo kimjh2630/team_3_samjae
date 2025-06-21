@@ -128,7 +128,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 20),
               Text(
-                nickname ?? "nonMember".tr(),
+                "${(nickname == null || nickname.isEmpty || nickname == '비회원')
+                    ? "please_log_in".tr() : nickname}",
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,

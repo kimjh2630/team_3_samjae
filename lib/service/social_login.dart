@@ -41,7 +41,7 @@ class _LoginWidgetState extends State<LoginWidget> {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email'],
-    serverClientId: '399398963854-dh1b6tgh5sol88q87jcg80edo4n7nomk.apps.googleusercontent.com',);
+      serverClientId: '399398963854-dh1b6tgh5sol88q87jcg80edo4n7nomk.apps.googleusercontent.com',);
 
   @override
   void initState() {
@@ -138,11 +138,11 @@ class _LoginWidgetState extends State<LoginWidget> {
         try {
           // DB에 사용자 정보 저장
           await _db.saveUserInfo(
-            email:           user.email      ?? '',
-            nickname:        user.displayName?? '익명',
-            loginPlatform:   'google',
-            firebaseUid:     user.uid,
-            profileImage: user.photoURL    ?? '',
+            nickname: user.displayName ?? '익명',
+            email: user.email ?? '',
+            loginPlatform: 'google',
+            profileImage: user.photoURL ?? '',
+            firebaseUid: user.uid,
           );
 
           await _updateLoginState(
@@ -384,7 +384,7 @@ class _LoginWidgetState extends State<LoginWidget> {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(builder: (context) => nav_MainPage()),
-                          (route) => false,
+                      (route) => false,
                     );
                   }
                 },

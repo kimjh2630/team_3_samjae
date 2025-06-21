@@ -195,6 +195,16 @@ class MedicalFacility {
     }
   }
 
+  // 최종 운영 상태를 결정하는 getter
+  String get finalOpenStatus {
+    // 1. 서버에서 제공한 상태가 유효하면 그 값을 최우선으로 사용
+    if (todayOpenStatusFromServer != null && todayOpenStatusFromServer!.isNotEmpty) {
+      return todayOpenStatusFromServer!;
+    }
+    // 2. 서버 제공 상태가 없으면, 클라이언트에서 계산한 상태를 사용
+    return calculateTodayOpenStatus();
+  }
+
   // 현재 시간에 따라 운영 상태를 계산하는 메서드 (Flutter에서 계산)
   String calculateTodayOpenStatus() {
     final now = DateTime.now();

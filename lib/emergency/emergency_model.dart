@@ -3,7 +3,7 @@ import '../component/medical_facility.dart';
 class EmergencyFacility {
   final String? hpid;
   final String? dutyName;
-  final String? dutyTel;
+  final String? dutyTel1;
   final String? dutyAddr;
   final String? wgs84Lat;
   final String? wgs84Lon;
@@ -24,7 +24,7 @@ class EmergencyFacility {
   EmergencyFacility({
     this.hpid,
     this.dutyName,
-    this.dutyTel,
+    this.dutyTel1,
     this.dutyAddr,
     this.wgs84Lat,
     this.wgs84Lon,
@@ -50,7 +50,7 @@ class EmergencyFacility {
     return EmergencyFacility(
       hpid: getStringValue(json['hpid']),
       dutyName: getStringValue(json['dutyName']),
-      dutyTel: getStringValue(json['dutyTel']),
+      dutyTel1: getStringValue(json['dutyTel1']),
       dutyAddr: getStringValue(json['dutyAddr']),
       wgs84Lat: getStringValue(json['wgs84Lat']),
       wgs84Lon: getStringValue(json['wgs84Lon']),
@@ -71,11 +71,11 @@ class EmergencyFacility {
   // MedicalFacility로 변환하는 메서드
   MedicalFacility toMedicalFacility() {
     // 필수 정보가 없는 경우 로그 출력
-    if (dutyName == null || dutyTel == null || wgs84Lat == null || wgs84Lon == null) {
+    if (dutyName == null || dutyTel1 == null || wgs84Lat == null || wgs84Lon == null) {
       print('Warning: Converting EmergencyFacility with missing information:');
       print('HPID: $hpid');
       print('Name: $dutyName');
-      print('Tel: $dutyTel');
+      print('Tel: $dutyTel1');
       print('Coordinates: $wgs84Lat, $wgs84Lon');
       print('Emergency Info:');
       print('- ER: $hvec');
@@ -99,7 +99,7 @@ class EmergencyFacility {
 
     // 기본값 설정
     final defaultName = (dutyName?.isNotEmpty ?? false) ? dutyName! : '이름 없음';
-    final defaultTel = (dutyTel?.isNotEmpty ?? false) ? dutyTel! : '전화번호 없음';
+    final defaultTel = (dutyTel1?.isNotEmpty ?? false) ? dutyTel1! : '전화번호 없음';
     final defaultAddr = (dutyAddr?.isNotEmpty ?? false) ? dutyAddr! : '주소 없음';
 
     // 24시간 운영 시간 설정

@@ -14,6 +14,7 @@ import 'package:project/service/auth_service.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import 'dart:async';
+import 'package:url_launcher/url_launcher.dart';
 
 class HospitalMainPage extends StatefulWidget {
   const HospitalMainPage({Key? key}) : super(key: key);
@@ -35,6 +36,22 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
     'assets/images/ad2.png',
     'assets/images/ad3.png',
   ];
+
+  // 1:1로 매핑된 광고 클릭 시 이동할 URL
+  final List<String> adUrls = [
+    'https://health.kdca.go.kr/healthinfo/biz/health/ntcnInfo/healthSourc/thtimtCntnts/thtimtCntntsView.do?thtimt_cntnts_sn=120&utm_source=kdca&utm_medium=kdca',
+    'https://www.kdca.go.kr/gallery.es?mid=a20503020000&bid=0003&b_list=9&act=view&list_no=146864',
+    'https://www.kdca.go.kr/gallery.es?mid=a20503020000&bid=0003',
+  ];
+
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      throw 'URL을 열 수 없습니다: $url';
+    }
+  }
 
   int _currentPage = 0;
   Timer? _timer;
@@ -94,7 +111,7 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
               children: [
                 const SizedBox(height: 20),
                 Text(
-                  "${'hello'.tr()}, ${nickname ?? "guest".tr()} ${"ok_".tr()}",
+                  "${'hello'.tr()}, ${(nickname == null || nickname.isEmpty || nickname == '비회원') ? 'guest'.tr() : nickname} ${'ok_'.tr()}",
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -110,7 +127,9 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                     controller: _controller,
                     itemCount: adImages.length,
                     itemBuilder: (context, index) {
-                      return Padding(
+                      return GestureDetector(
+                        onTap: () => _launchUrl(adUrls[index]),
+                        child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8.0),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
@@ -118,6 +137,7 @@ class _HospitalMainPageState extends State<HospitalMainPage> {
                             adImages[index],
                             fit: BoxFit.cover,
                           ),
+                        ),
                         ),
                       );
                     },

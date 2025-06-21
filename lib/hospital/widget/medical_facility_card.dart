@@ -48,7 +48,7 @@ class MedicalFacilityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = facility.todayOpenStatusFromServer;
+    final status = facility.finalOpenStatus;
     final translatedStatus = _getTranslatedStatus(status);
     final statusColor = _getStatusColor(status);
 
@@ -60,8 +60,8 @@ class MedicalFacilityCard extends StatelessWidget {
         title: Text(
           facility.getCleanDutyName() ?? 'no_name'.tr(),
           style: TextStyle(
-              fontWeight: FontWeight.bold,
-          fontSize: 18,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
           ),
         ),
 

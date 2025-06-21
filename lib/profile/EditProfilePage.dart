@@ -5,6 +5,9 @@ import 'package:project/service/social_login.dart';
 import 'dart:convert';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
+import 'package:project/service/database_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class EditProfilePage extends StatefulWidget {
   final String? currentNickname;
@@ -196,25 +199,40 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       final email    = info['email'];
                       final platform = info['platform'];
                       if (email != null && platform != null) {
-                        final res = await AuthService.deleteAccount(email, platform);
-                        if (res.statusCode == 200) {
-                          await AuthService.logout();
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text( "accountDeletionComplete".tr())),
-                          );
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (_) => const LoginWidget()),
+                        try {
+                              // 1) DB에서 레코드 삭제
+                              final removed = await DatabaseService()
+                                  .deleteUser(email: email, loginPlatform: platform);
+                              if (!removed) throw 'DB 삭제 실패';
+
+                              // 2) Firebase Auth 계정 삭제
+                              final user = FirebaseAuth.instance.currentUser;
+                              if (user != null) {
+                                await user.delete();
+                                // 3) 구글 세션 종료
+                                await GoogleSignIn().signOut();
+                              }
+
+                              // 4) 앱 상태 초기화
+                              Provider.of<AppState>(context, listen: false).setLoggedIn(false);
+                              Provider.of<AppState>(context, listen: false).nickname = null;
+
+                              // 5) 로그인 화면으로 돌아가기
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("accountDeletionComplete".tr())),
+                              );
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(builder: (_) => const LoginWidget()),
                                 (route) => false,
-                          );
-                        } else {
-                          final msg = res.body.isNotEmpty ? res.body : '회원 탈퇴 실패';
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('${ "accountDeletionFailed".tr()}: $msg')),
-                          );
-                        }
+                              );
+                            } catch (e) {
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('${"accountDeletionFailed".tr()}: $e')),
+                              );
+                            }
                       }
                     }
                   },

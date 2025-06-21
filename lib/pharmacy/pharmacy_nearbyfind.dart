@@ -4,7 +4,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:project/widgets/language_dialog.dart';
 import '../component/medical_facility.dart';
 import '../component/medical_facility_detailpage.dart';
-import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization/easy_localization.dart'
+;
 
 class NearbyMedicalMapWidget extends StatefulWidget {
   final Position? currentPosition;
@@ -53,7 +54,7 @@ class _NearbyMedicalMapWidgetState extends State<NearbyMedicalMapWidget> {
               widget.title.tr(),
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: Colors.black87),
+              color: Colors.white),
           ),
           actions: [
             IconButton(
@@ -62,9 +63,11 @@ class _NearbyMedicalMapWidgetState extends State<NearbyMedicalMapWidget> {
               tooltip: 'language_selection'.tr(),
             ),
           ],
-          backgroundColor: Color(0xFFDDF0EE),
+          backgroundColor: Color(0xFF67BD7D),
       ),
-      body: Stack(
+      body: SafeArea(
+    bottom: true,
+    child: Stack(
         children: [
           NaverMap(
             options: NaverMapViewOptions(
@@ -102,7 +105,7 @@ class _NearbyMedicalMapWidgetState extends State<NearbyMedicalMapWidget> {
                 NOverlayCaption(
                   text: 'pharmacy.current_location'.tr(),
                   textSize: 14,
-                  color: Colors.blue,
+                  color: Colors.black87,
                 ),
               );
               controller.addOverlay(currentMarker);
@@ -190,7 +193,7 @@ class _NearbyMedicalMapWidgetState extends State<NearbyMedicalMapWidget> {
                         fontWeight: FontWeight.bold,
                       ),),
                       icon: Icon(Icons.map),
-                      backgroundColor: Color(0xFF4BB8EA),
+                      backgroundColor: Color(0xFF67BD7D),
                       foregroundColor: Colors.white,
                     ),
                   ),
@@ -229,7 +232,7 @@ class _NearbyMedicalMapWidgetState extends State<NearbyMedicalMapWidget> {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF146DA3),
+                                  color: Color(0xFF67BD7D),
                                 ),
                               ),
                               Text(
@@ -361,12 +364,13 @@ class _NearbyMedicalMapWidgetState extends State<NearbyMedicalMapWidget> {
                     fontWeight: FontWeight.bold,
                   ),),
                   icon: Icon(Icons.list),
-                  backgroundColor: Color(0xFF4BB8EA),
+                  backgroundColor: Color(0xFF67BD7D),
                   foregroundColor: Colors.white,
                 ),
               ),
             ),
         ],
+      ),
       ),
     );
   }
