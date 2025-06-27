@@ -41,7 +41,7 @@ class ReservationService {
     return _reservations.where((r) => r.userId == userId).toList();
   }
 
-  static const String baseUrl = 'https://900a-121-172-220-55.ngrok-free.app'; // 실제 서버 주소로 변경
+  static const String baseUrl = 'http://192.168.186.79:8000'; // 실제 서버 주소로 변경
 
   static Future<int?> createReservation({
     required int userId,
@@ -167,6 +167,7 @@ class ReservationService {
 
   static Future<MedicalFacility?> fetchMedicalFacilityById(String hospitalId) async {
     try {
+      const String baseUrl = 'http://192.168.186.79:8000';
       final url = Uri.parse('$baseUrl/api/medical/$hospitalId');
       final response = await http.get(url);
       if (response.statusCode == 200) {

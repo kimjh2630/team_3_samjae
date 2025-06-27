@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 class ChatbotService {
   final String apiUrl;
-  ChatbotService({this.apiUrl = 'https://900a-121-172-220-55.ngrok-free.app/chat/'});
+  ChatbotService({this.apiUrl = 'http://192.168.186.79:8000/chat/'});
 
   Future<String> sendMessage(String prompt, String langCode) async {
     final response = await http.post(

@@ -46,6 +46,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
     });
   }
 
+  Future<void> _logout() async {
+    await AuthService.logout();
+    Provider.of<AppState>(context, listen: false).logout();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginWidget()),
+    );
+  }
+
   void _onNicknameSave() async {
     if (_nicknameFormKey.currentState?.validate() ?? false) {
       if (_email == null || _platform == null) {
@@ -148,16 +157,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Column(
       children: [
         InkWell(
-          onTap: () => setState(() { _showDeleteForm = !_showDeleteForm; }),
+          onTap: () => setState(() => _showDeleteForm = !_showDeleteForm),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
             child: Row(
               children: [
                 const Icon(Icons.delete_outline, size: 22, color: Colors.red),
                 const SizedBox(width: 12),
-                Text("accountDeletion".tr(), style: TextStyle(fontSize: 16, color: Colors.red, fontWeight: FontWeight.bold)),
+                Text("accountDeletion".tr(),
+                    style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold)),
                 const Spacer(),
-                Icon(_showDeleteForm ? Icons.expand_less : Icons.arrow_forward_ios, size: 18, color: Colors.black38),
+                Icon(_showDeleteForm ? Icons.expand_less : Icons.arrow_forward_ios,
+                    size: 18, color: Colors.black38),
               ],
             ),
           ),
@@ -170,76 +184,58 @@ class _EditProfilePageState extends State<EditProfilePage> {
               children: [
                 Text(
                   "accountDeletionWarning".tr(),
-                  style: TextStyle(color: Colors.red, fontSize: 14),
+                  style: const TextStyle(color: Colors.red, fontSize: 14),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                   onPressed: () async {
                     final confirmed = await showDialog<bool>(
                       context: context,
-                      builder: (context) => AlertDialog(
+                      builder: (ctx) => AlertDialog(
                         title: Text("confirmAccountDeletion".tr()),
                         content: Text("accountDeletionWarning".tr()),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+                          TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('취소')),
                           ElevatedButton(
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                            onPressed: () => Navigator.pop(context, true),
+                            style:
+                            ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                            onPressed: () => Navigator.pop(ctx, true),
                             child: Text("accountDeletion".tr()),
                           ),
                         ],
                       ),
                     );
-                    if (confirmed == true) {
-                      final info     = await AuthService.getUserInfo();
-                      final email    = info['email'];
-                      final platform = info['platform'];
-                      if (email != null && platform != null) {
-                        try {
-                              // 1) DB에서 레코드 삭제
-                              final removed = await DatabaseService()
-                                  .deleteUser(email: email, loginPlatform: platform);
-                              if (!removed) throw 'DB 삭제 실패';
+                    if (confirmed != true) return;
 
-                              // 2) Firebase Auth 계정 삭제
-                              final user = FirebaseAuth.instance.currentUser;
-                              if (user != null) {
-                                await user.delete();
-                                // 3) 구글 세션 종료
-                                await GoogleSignIn().signOut();
-                              }
-
-                              // 4) 앱 상태 초기화
-                              Provider.of<AppState>(context, listen: false).setLoggedIn(false);
-                              Provider.of<AppState>(context, listen: false).nickname = null;
-
-                              // 5) 로그인 화면으로 돌아가기
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text("accountDeletionComplete".tr())),
-                              );
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(builder: (_) => const LoginWidget()),
-                                (route) => false,
-                              );
-                            } catch (e) {
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('${"accountDeletionFailed".tr()}: $e')),
-                              );
-                            }
-                      }
+                    // — 로컬 탈퇴 API 호출
+                    if (_email == null || _platform == null) return;
+                    final resp = await AuthService.deleteAccount(
+                      _email!, _platform!,
+                    );
+                    if (resp.statusCode == 200) {
+                      await _logout();  // 위에서 만든 로그아웃 메서드로 이동
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("accountDeletionComplete".tr())),
+                      );
+                    } else {
+                      final msg = utf8.decode(resp.bodyBytes);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text(
+                                '${"accountDeletionFailed".tr()}: $msg')),
+                      );
                     }
                   },
-                  child: Text(
-                    "deleteAccount".tr(),
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
+                  child: Text("deleteAccount".tr(),
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -249,6 +245,113 @@ class _EditProfilePageState extends State<EditProfilePage> {
       ],
     );
   }
+
+  // 기존 회원 탈퇴 로직
+  // Widget _buildDeleteAccountAccordion() {
+  //   return Column(
+  //     children: [
+  //       InkWell(
+  //         onTap: () => setState(() { _showDeleteForm = !_showDeleteForm; }),
+  //         child: Container(
+  //           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+  //           child: Row(
+  //             children: [
+  //               const Icon(Icons.delete_outline, size: 22, color: Colors.red),
+  //               const SizedBox(width: 12),
+  //               Text("accountDeletion".tr(), style: TextStyle(fontSize: 16, color: Colors.red, fontWeight: FontWeight.bold)),
+  //               const Spacer(),
+  //               Icon(_showDeleteForm ? Icons.expand_less : Icons.arrow_forward_ios, size: 18, color: Colors.black38),
+  //             ],
+  //           ),
+  //         ),
+  //       ),
+  //       if (_showDeleteForm) ...[
+  //         Container(
+  //           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+  //           child: Column(
+  //             crossAxisAlignment: CrossAxisAlignment.stretch,
+  //             children: [
+  //               Text(
+  //                 "accountDeletionWarning".tr(),
+  //                 style: TextStyle(color: Colors.red, fontSize: 14),
+  //               ),
+  //               const SizedBox(height: 16),
+  //               ElevatedButton(
+  //                 style: ElevatedButton.styleFrom(
+  //                   backgroundColor: Colors.red,
+  //                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+  //                 ),
+  //                 onPressed: () async {
+  //                   final confirmed = await showDialog<bool>(
+  //                     context: context,
+  //                     builder: (context) => AlertDialog(
+  //                       title: Text("confirmAccountDeletion".tr()),
+  //                       content: Text("accountDeletionWarning".tr()),
+  //                       actions: [
+  //                         TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+  //                         ElevatedButton(
+  //                           style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+  //                           onPressed: () => Navigator.pop(context, true),
+  //                           child: Text("accountDeletion".tr()),
+  //                         ),
+  //                       ],
+  //                     ),
+  //                   );
+  //                   if (confirmed == true) {
+  //                     final info     = await AuthService.getUserInfo();
+  //                     final email    = info['email'];
+  //                     final platform = info['platform'];
+  //                     if (email != null && platform != null) {
+  //                       try {
+  //                             // 1) DB에서 레코드 삭제
+  //                             final removed = await DatabaseService()
+  //                                 .deleteUser(email: email, loginPlatform: platform);
+  //                             if (!removed) throw 'DB 삭제 실패';
+  //
+  //                             // 2) Firebase Auth 계정 삭제
+  //                             final user = FirebaseAuth.instance.currentUser;
+  //                             if (user != null) {
+  //                               await user.delete();
+  //                               // 3) 구글 세션 종료
+  //                               await GoogleSignIn().signOut();
+  //                             }
+  //
+  //                             // 4) 앱 상태 초기화
+  //                             Provider.of<AppState>(context, listen: false).setLoggedIn(false);
+  //                             Provider.of<AppState>(context, listen: false).nickname = null;
+  //
+  //                             // 5) 로그인 화면으로 돌아가기
+  //                             if (!mounted) return;
+  //                             ScaffoldMessenger.of(context).showSnackBar(
+  //                               SnackBar(content: Text("accountDeletionComplete".tr())),
+  //                             );
+  //                             Navigator.pushAndRemoveUntil(
+  //                               context,
+  //                               MaterialPageRoute(builder: (_) => const LoginWidget()),
+  //                               (route) => false,
+  //                             );
+  //                           } catch (e) {
+  //                             if (!mounted) return;
+  //                             ScaffoldMessenger.of(context).showSnackBar(
+  //                               SnackBar(content: Text('${"accountDeletionFailed".tr()}: $e')),
+  //                             );
+  //                           }
+  //                     }
+  //                   }
+  //                 },
+  //                 child: Text(
+  //                   "deleteAccount".tr(),
+  //                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //         const Divider(height: 1, color: Colors.grey),
+  //       ],
+  //     ],
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {

@@ -29,6 +29,16 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void login() {
+    _isLoggedIn = true;
+    notifyListeners();
+  }
+
+  void logout() {
+    _nickname = null;
+    _isLoggedIn = false;
+    notifyListeners();
+  }
 
   Position? get position => _position;
   List<MedicalFacility>? get pharmacies => _pharmacies;

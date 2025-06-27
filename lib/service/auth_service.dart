@@ -14,7 +14,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
-  static const String baseUrl = 'https://f64e-121-172-220-55.ngrok-free.app'; // API 서버 주소
+  static const String baseUrl = 'http://192.168.186.79:8000'; // API 서버 주소
   static const String jwtKey = 'jwt_token';
   static const String refreshTokenKey = 'refresh_token';
   static const String userEmailKey = 'user_email';

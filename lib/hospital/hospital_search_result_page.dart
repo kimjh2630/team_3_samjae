@@ -12,7 +12,7 @@ import 'package:http/http.dart' as http;
 import 'package:easy_localization/easy_localization.dart';
 import 'widget/medical_facility_card.dart';
 
-const String apiBase = 'https://900a-121-172-220-55.ngrok-free.app';
+const String apiBase = 'http://192.168.186.79:8000';
 
 class HospitalSearchResultPage extends StatefulWidget {
   const HospitalSearchResultPage({Key? key}) : super(key: key);
